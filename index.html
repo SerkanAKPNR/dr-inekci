@@ -515,16 +515,46 @@
         <button class="chip" onclick="setFilter('duve')">Düve</button>
         <button class="chip" onclick="setFilter('buzagi')">Buzağı</button>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="toggleTopluSil()">Toplu Sil</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="toggleTopluAsi()" style="border-color:var(--accent);color:var(--accent);">💉 Toplu Aşı</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleTopluSil()">Toplu Sil</button>
+      </div>
     </div>
+
+    <!-- Toplu Aşı Paneli -->
+    <div id="topluAsiPanel" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:8px;">Hayvanları seç, aşı/ilaç bilgisini gir:</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button onclick="topluAsiHepsiniSec(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Tümünü Seç</button>
+        <button onclick="topluAsiHepsiniSec(false)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Temizle</button>
+      </div>
+      <div id="topluAsiList" style="max-height:180px;overflow-y:auto;margin-bottom:10px;"></div>
+      <input class="form-input" id="ta_isim" placeholder="Aşı / İlaç adı (Şap, Brucella...)" style="margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input class="form-input" id="ta_tarih" type="date" style="flex:1;">
+        <input class="form-input" id="ta_periyot" type="number" placeholder="Periyot (gün)" style="flex:1;">
+      </div>
+      <input class="form-input" id="ta_not" placeholder="Not (opsiyonel)" style="margin-bottom:10px;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1" onclick="executeTopluAsi()">💉 Uygula</button>
+        <button class="btn btn-outline" style="flex:1" onclick="toggleTopluAsi()">İptal</button>
+      </div>
+    </div>
+
+    <!-- Toplu Sil Paneli -->
     <div id="topluSilPanel" style="display:none;background:var(--surface);border:1px solid var(--danger);border-radius:10px;padding:12px;margin-bottom:12px;">
       <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:8px;">Silmek istediğin hayvanları seç:</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button onclick="topluSilHepsiniSec(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Tümünü Seç</button>
+        <button onclick="topluSilHepsiniSec(false)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Temizle</button>
+      </div>
       <div id="topluSilList"></div>
       <div style="display:flex;gap:8px;margin-top:10px;">
         <button class="btn btn-danger" style="flex:1" onclick="executeTopluSil()">Seçilenleri Sil</button>
         <button class="btn btn-outline" style="flex:1" onclick="toggleTopluSil()">İptal</button>
       </div>
     </div>
+
     <div class="animal-list" id="animalList"></div>
   </div>
 
@@ -619,8 +649,19 @@
       <div class="detail-row"><span class="detail-key">Toplam Hayvan</span><span class="detail-val" id="ayarlarToplam">—</span></div>
       <div class="detail-row"><span class="detail-key">Süt Kaydı</span><span class="detail-val" id="ayarlarSut">—</span></div>
     </div>
+
+    <div class="sec-title">Veteriner PIN</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:0.78rem;color:var(--text2);margin-bottom:10px;">Veteriner modülüne erişim için PIN (varsayılan: 1234)</div>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="yeniPin" type="password" placeholder="Yeni PIN" style="flex:1;letter-spacing:4px;">
+        <button class="btn btn-sm" onclick="pinDegistir()">Kaydet</button>
+      </div>
+      <button class="btn btn-outline" style="width:100%;margin-top:10px;" onclick="showPage('vet')">🩺 Veteriner Modülüne Git</button>
+    </div>
+
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <button class="btn" onclick="disaAktar()" style="width:100%;padding:14px;">📤 Verileri Dışa Aktar (Excel)</button>
+      <button class="btn" onclick="disaAktar()" style="width:100%;padding:14px;">📤 Verileri Dışa Aktar (CSV)</button>
       <div style="height:1px;background:var(--border);margin:4px 0;"></div>
       <button class="btn btn-outline" onclick="cikisYap()" style="width:100%;padding:14px;">🚪 Çıkış Yap</button>
       <div style="height:1px;background:var(--border);margin:4px 0;"></div>
@@ -628,8 +669,31 @@
     </div>
     <div class="sec-title">Uygulama Hakkında</div>
     <div class="detail-card">
-      <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.03-v1</span></div>
+      <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.03-v2</span></div>
       <div class="detail-row"><span class="detail-key">Geliştirici</span><span class="detail-val">Dr. İnekçi</span></div>
+    </div>
+  </div>
+
+  <!-- VETERİNER MODÜLÜ -->
+  <div class="page" id="page-vet">
+    <div id="vetLoginPanel" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🩺</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--accent2);margin-bottom:8px;">Veteriner Modülü</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:24px;">Bu modül yetkili veteriner hekime özeldir.</div>
+      <input class="form-input" id="vetPin" type="password" placeholder="PIN" style="text-align:center;font-size:1.5rem;letter-spacing:8px;margin-bottom:12px;max-width:200px;">
+      <button class="btn" style="width:100%;max-width:200px;" onclick="vetGiris()">Giriş</button>
+      <div id="vetPinHata" style="color:var(--danger);font-size:0.8rem;margin-top:8px;"></div>
+      <button onclick="showPage('ayarlar')" style="background:none;border:none;color:var(--text2);margin-top:16px;cursor:pointer;font-size:0.85rem;">← Geri</button>
+    </div>
+    <div id="vetPanel" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="sec-title" style="margin:0;">Tedavi Kayıtları</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="openVetModal()">+ Yeni</button>
+          <button onclick="vetCikis()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text2);font-size:0.72rem;cursor:pointer;">Çıkış</button>
+        </div>
+      </div>
+      <div id="vetKayitList"></div>
     </div>
   </div>
 
@@ -660,7 +724,37 @@
 <div class="modal-overlay" id="addModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Hayvan Ekle</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="modal-title" style="margin-bottom:0;">Hayvan Ekle</div>
+      <button onclick="toggleTopluGiris()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:0.72rem;cursor:pointer;">📋 Toplu Giriş</button>
+    </div>
+
+    <!-- Toplu Giriş Paneli -->
+    <div id="topluGirisPanel" style="display:none;margin-bottom:14px;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+        <div class="form-label" style="margin-bottom:6px;">Küpe Numaralarını Girin</div>
+        <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">Numaraları noktalı virgülle ayırın (;)</div>
+        <textarea id="topluInput" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.85rem;min-height:80px;outline:none;resize:vertical;" placeholder="TR150001; TR150002; TR150003"></textarea>
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Tür</label>
+            <select class="form-select" id="toplu_tur">
+              <option value="inek">İnek</option>
+              <option value="duve">Düve</option>
+              <option value="buzagi">Buzağı</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Irk</label>
+            <input class="form-input" id="toplu_irk" placeholder="Holstein...">
+          </div>
+        </div>
+        <button class="btn" style="width:100%;margin-top:10px;" onclick="saveToplu()">📋 Toplu Kaydet</button>
+        <div id="topluResult" style="margin-top:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;display:none;"></div>
+      </div>
+      <div style="text-align:center;color:var(--text2);font-size:0.8rem;margin:12px 0;">— ya da tek tek ekle —</div>
+    </div>
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Tür</label>
@@ -1009,6 +1103,9 @@ let sutFilter = 'hafta';
 let misafirModu = false;
 let takvimAy = new Date();
 let editAnimalId = null;
+let vetPinDogrulandi = false;
+let topluAsiAcik = false;
+let topluSilAcikMi = false;
 
 // Firebase hazır olana kadar bekle
 window._loginSuccess = function(user) {
@@ -1584,20 +1681,96 @@ function deleteAnimal(id) {
   showToast('Silindi');
 }
 
-// Toplu sil
-let topluSilAcik = false;
-function toggleTopluSil() {
-  topluSilAcik = !topluSilAcik;
-  const panel = document.getElementById('topluSilPanel');
-  panel.style.display = topluSilAcik ? 'block' : 'none';
-  if (topluSilAcik) {
-    const list = document.getElementById('topluSilList');
-    const aktif = animals.filter(a=>!a.durum||a.durum==='hayatta');
-    list.innerHTML = aktif.map(a=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.9rem;">
-      <input type="checkbox" class="ts_cb" data-id="${a.id}" style="width:16px;height:16px;accent-color:var(--danger);">
-      <span>${a.isim||a.kupe}</span><span style="color:var(--text2);font-size:0.75rem;font-family:'JetBrains Mono',monospace;">${a.kupe}</span>
-    </label>`).join('');
+// ===== TOPLU GİRİŞ =====
+function toggleTopluGiris() {
+  const panel = document.getElementById('topluGirisPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+function saveToplu() {
+  const raw = document.getElementById('topluInput').value;
+  const tur = document.getElementById('toplu_tur').value;
+  const irk = document.getElementById('toplu_irk').value.trim();
+  const kupeler = raw.split(';').map(s=>s.trim().toUpperCase()).filter(s=>s.length>0);
+  if (kupeler.length === 0) { showToast('Küpe no girin'); return; }
+  let eklenen = 0, atlanan = 0;
+  kupeler.forEach(kupe => {
+    if (animals.find(a=>a.kupe===kupe)) { atlanan++; return; }
+    animals.push({ id:genId(), tur, cinsiyet:'disi', kupe, isim:'', irk, dogumTarihi:'', not:'', durum:'hayatta', vaccines:[], tohumlama:[], dogumlar:[] });
+    eklenen++;
+  });
+  save();
+  const res = document.getElementById('topluResult');
+  res.style.display = 'block';
+  res.style.color = 'var(--success)';
+  res.textContent = `✓ ${eklenen} hayvan eklendi${atlanan>0?' ('+atlanan+' zaten vardı)':''}`;
+  document.getElementById('topluInput').value = '';
+  renderAnimals();
+  showToast(`${eklenen} hayvan eklendi ✓`);
+}
+
+// ===== TOPLU AŞI =====
+function toggleTopluAsi() {
+  topluAsiAcik = !topluAsiAcik;
+  const panel = document.getElementById('topluAsiPanel');
+  panel.style.display = topluAsiAcik ? 'block' : 'none';
+  if (topluAsiAcik) {
+    document.getElementById('ta_isim').value = '';
+    document.getElementById('ta_tarih').value = today();
+    document.getElementById('ta_periyot').value = '';
+    document.getElementById('ta_not').value = '';
+    renderTopluAsiList();
   }
+}
+function renderTopluAsiList() {
+  const aktif = animals.filter(a=>!a.durum||a.durum==='hayatta');
+  document.getElementById('topluAsiList').innerHTML = aktif.map(a=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.88rem;cursor:pointer;">
+      <input type="checkbox" class="ta_cb" data-id="${a.id}" style="width:15px;height:15px;accent-color:var(--accent);">
+      <span style="flex:1;">${a.isim||a.kupe}</span>
+      <span style="color:var(--text2);font-size:0.7rem;font-family:'JetBrains Mono',monospace;">${a.tur}</span>
+    </label>`).join('');
+}
+function topluAsiHepsiniSec(sec) {
+  document.querySelectorAll('.ta_cb').forEach(cb => cb.checked = sec);
+}
+function executeTopluAsi() {
+  const selected = [...document.querySelectorAll('.ta_cb:checked')].map(c=>c.dataset.id);
+  if (selected.length === 0) { showToast('Hayvan seçilmedi'); return; }
+  const isim = document.getElementById('ta_isim').value.trim();
+  if (!isim) { showToast('Aşı adı girin'); return; }
+  const tarih = document.getElementById('ta_tarih').value;
+  const periyot = document.getElementById('ta_periyot').value;
+  const not = document.getElementById('ta_not').value.trim();
+  if (!confirm(`${selected.length} hayvana "${isim}" uygulanacak. Onaylıyor musun?`)) return;
+  selected.forEach(id => {
+    const a = animals.find(x=>x.id===id);
+    if (!a) return;
+    if (!a.vaccines) a.vaccines = [];
+    a.vaccines.push({ id:genId(), isim, tarih, periyot, not });
+  });
+  save();
+  toggleTopluAsi();
+  showToast(`${selected.length} hayvana ${isim} uygulandı ✓`);
+}
+
+// ===== TOPLU SİL =====
+function toggleTopluSil() {
+  topluSilAcikMi = !topluSilAcikMi;
+  const panel = document.getElementById('topluSilPanel');
+  panel.style.display = topluSilAcikMi ? 'block' : 'none';
+  if (topluSilAcikMi) renderTopluSilList();
+}
+function renderTopluSilList() {
+  const aktif = animals.filter(a=>!a.durum||a.durum==='hayatta');
+  document.getElementById('topluSilList').innerHTML = aktif.map(a=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.9rem;cursor:pointer;">
+      <input type="checkbox" class="ts_cb" data-id="${a.id}" style="width:16px;height:16px;accent-color:var(--danger);">
+      <span style="flex:1;">${a.isim||a.kupe}</span>
+      <span style="color:var(--text2);font-size:0.75rem;font-family:'JetBrains Mono',monospace;">${a.kupe}</span>
+    </label>`).join('');
+}
+function topluSilHepsiniSec(sec) {
+  document.querySelectorAll('.ts_cb').forEach(cb => cb.checked = sec);
 }
 function executeTopluSil() {
   const selected = [...document.querySelectorAll('.ts_cb:checked')].map(c=>c.dataset.id);
@@ -1607,6 +1780,7 @@ function executeTopluSil() {
   save(); toggleTopluSil(); renderAnimals();
   showToast(`${selected.length} hayvan silindi`);
 }
+
 
 // ===== AŞI =====
 let vaccineAnimalId = null;
@@ -1997,6 +2171,99 @@ function renderAyarlar() {
   document.getElementById('ayarlarSut').textContent = sutRecords.length + ' kayıt';
   if (!document.getElementById('rapor_bas').value) raporFiltre(30);
 }
+
+function pinDegistir() {
+  const yeni = document.getElementById('yeniPin').value.trim();
+  if (!yeni || yeni.length < 4) { showToast('En az 4 haneli PIN girin'); return; }
+  localStorage.setItem('vet_pin', yeni);
+  document.getElementById('yeniPin').value = '';
+  showToast('PIN güncellendi ✓');
+}
+function getPin() { return localStorage.getItem('vet_pin') || '1234'; }
+
+// ===== VETERİNER MODÜLÜ =====
+let vetKayitlar = JSON.parse(localStorage.getItem('vet_kayitlar') || '[]');
+
+function saveVetKayitlar() {
+  localStorage.setItem('vet_kayitlar', JSON.stringify(vetKayitlar));
+}
+
+function vetGiris() {
+  const pin = document.getElementById('vetPin').value;
+  if (pin === getPin()) {
+    vetPinDogrulandi = true;
+    document.getElementById('vetLoginPanel').style.display = 'none';
+    document.getElementById('vetPanel').style.display = 'block';
+    document.getElementById('vetPin').value = '';
+    renderVetKayitlar();
+  } else {
+    document.getElementById('vetPinHata').textContent = 'Hatalı PIN!';
+    setTimeout(() => document.getElementById('vetPinHata').textContent = '', 2000);
+  }
+}
+function vetCikis() {
+  vetPinDogrulandi = false;
+  document.getElementById('vetLoginPanel').style.display = 'block';
+  document.getElementById('vetPanel').style.display = 'none';
+}
+function renderVetKayitlar() {
+  const list = document.getElementById('vetKayitList');
+  if (vetKayitlar.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🩺</div><div>Henüz tedavi kaydı yok</div></div>';
+    return;
+  }
+  list.innerHTML = vetKayitlar.slice().reverse().map(k => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-weight:700;">${k.hayvan}</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text2);">${fmtDate(k.tarih)}</span>
+          <button onclick="deleteVetKayit('${k.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;">✕</button>
+        </div>
+      </div>
+      <div style="font-size:0.85rem;color:var(--accent2);margin-bottom:4px;">📋 ${k.tani}</div>
+      <div style="font-size:0.82rem;color:var(--text2);">${k.tedavi}</div>
+      ${k.not?`<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;font-style:italic;">${k.not}</div>`:''}
+      <div style="margin-top:6px;">
+        <span style="font-size:0.68rem;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:20px;background:${k.sonuc==='iyilesti'?'rgba(16,185,129,0.2)':k.sonuc==='kotu'?'rgba(239,68,68,0.2)':'rgba(245,158,11,0.2)'};color:${k.sonuc==='iyilesti'?'var(--success)':k.sonuc==='kotu'?'var(--danger)':'var(--warn)'};">${k.sonuc==='iyilesti'?'✓ İyileşti':k.sonuc==='kotu'?'↓ Kötüleşti':k.sonuc==='devam'?'⏳ Devam':'👁 Takipte'}</span>
+      </div>
+    </div>`).join('');
+}
+function openVetModal() {
+  document.getElementById('vet_hayvan').value = '';
+  document.getElementById('vet_tani').value = '';
+  document.getElementById('vet_tedavi').value = '';
+  document.getElementById('vet_tarih').value = today();
+  document.getElementById('vet_sonuc').value = 'devam';
+  document.getElementById('vet_not').value = '';
+  document.getElementById('vetModal').classList.add('open');
+}
+function saveVetKayit() {
+  const hayvan = document.getElementById('vet_hayvan').value.trim();
+  const tani = document.getElementById('vet_tani').value.trim();
+  if (!hayvan || !tani) { showToast('Hayvan ve tanı zorunlu'); return; }
+  vetKayitlar.push({
+    id: genId(),
+    hayvan, tani,
+    tedavi: document.getElementById('vet_tedavi').value.trim(),
+    tarih: document.getElementById('vet_tarih').value,
+    sonuc: document.getElementById('vet_sonuc').value,
+    not: document.getElementById('vet_not').value.trim()
+  });
+  saveVetKayitlar();
+  closeModal('vetModal');
+  showToast('Kayıt eklendi ✓');
+  renderVetKayitlar();
+}
+function deleteVetKayit(id) {
+  if (!confirm('Bu tedavi kaydı silinecek. Emin misin?')) return;
+  vetKayitlar = vetKayitlar.filter(k=>k.id!==id);
+  saveVetKayitlar();
+  renderVetKayitlar();
+}
+
+// showPage vet için güncelle
+const _origShowPage = showPage;
 
 function disaAktar() {
   // CSV export
