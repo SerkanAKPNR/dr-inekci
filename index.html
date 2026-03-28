@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Dr. İnekçi">
 <meta name="theme-color" content="#2563eb">
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <!-- Firebase -->
 <script type="module">
@@ -750,6 +751,10 @@
           </div>
         </div>
         <button class="btn" style="width:100%;margin-top:10px;" onclick="saveToplu()">📋 Toplu Kaydet</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-outline" style="flex:1;font-size:0.82rem;" onclick="document.getElementById('excelImport').click()">📊 Excel'den Aktar</button>
+          <input type="file" id="excelImport" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
+        </div>
         <div id="topluResult" style="margin-top:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;display:none;"></div>
       </div>
       <div style="text-align:center;color:var(--text2);font-size:0.8rem;margin:12px 0;">— ya da tek tek ekle —</div>
@@ -775,7 +780,12 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Küpe No *</label>
-        <input class="form-input" id="f_kupe" placeholder="TR..." oninput="this.value=this.value.toUpperCase()">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input class="form-input" id="f_kupe" placeholder="TR..." oninput="this.value=this.value.toUpperCase()" onblur="this.value=formatKupe(this.value)" style="flex:1;">
+          <button type="button" onclick="document.getElementById('kupeCamera').click()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;" title="Fotoğraftan oku">📷</button>
+          <input type="file" id="kupeCamera" accept="image/*" capture="environment" style="display:none" onchange="readKupeFromPhoto(event)">
+        </div>
+        <div id="ocrStatus" style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;display:none;"></div>
       </div>
       <div class="form-group">
         <label class="form-label">İsim</label>
@@ -852,7 +862,7 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Küpe No</label>
-        <input class="form-input" id="e_kupe" oninput="this.value=this.value.toUpperCase()">
+        <input class="form-input" id="e_kupe" oninput="this.value=this.value.toUpperCase()" onblur="this.value=formatKupe(this.value)">
       </div>
       <div class="form-group">
         <label class="form-label">İsim</label>
@@ -1092,6 +1102,49 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- VETERİNER MODAL -->
+<div class="modal-overlay" id="vetModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🩺 Tedavi Kaydı</div>
+    <div class="form-group">
+      <label class="form-label">Hayvan (Küpe / İsim)</label>
+      <input class="form-input" id="vet_hayvan" placeholder="TR150001 veya Sarıkız">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tanı / Şikayet</label>
+      <input class="form-input" id="vet_tani" placeholder="Topallık, ishal, ateş...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Uygulanan Tedavi</label>
+      <textarea class="form-input" id="vet_tedavi" placeholder="İlaç adı, dozu, uygulama şekli..." style="min-height:70px;resize:vertical;"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tarih</label>
+        <input class="form-input" id="vet_tarih" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Sonuç</label>
+        <select class="form-select" id="vet_sonuc">
+          <option value="devam">Tedavi Devam</option>
+          <option value="iyilesti">İyileşti</option>
+          <option value="takip">Takipte</option>
+          <option value="kotu">Kötüleşti</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Veteriner Notu</label>
+      <textarea class="form-input" id="vet_not" placeholder="Özel gözlemler..." style="min-height:60px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveVetKayit()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('vetModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== VERİ =====
 let animals = [];
@@ -1243,7 +1296,7 @@ function showPage(page) {
   document.getElementById('page-'+page).classList.add('active');
   const navMap = {dashboard:0,animals:1,sut:2,takvim:3,rapor:4};
   if (navMap[page] !== undefined) document.querySelectorAll('.nav-btn')[navMap[page]].classList.add('active');
-  const fabHide = ['detail','ayarlar','takvim','rapor'];
+  const fabHide = ['detail','ayarlar','takvim','rapor','vet'];
   document.getElementById('fabBtn').style.display = fabHide.includes(page) ? 'none' : 'flex';
 
   if (page==='dashboard') renderDashboard();
@@ -1253,6 +1306,14 @@ function showPage(page) {
   if (page==='rapor') renderRapor();
   if (page==='ayarlar') renderAyarlar();
   if (page==='detail') renderDetail();
+  if (page==='vet') {
+    // Her açılışta PIN ekranına dön
+    vetPinDogrulandi = false;
+    document.getElementById('vetLoginPanel').style.display = 'block';
+    document.getElementById('vetPanel').style.display = 'none';
+    document.getElementById('vetPin').value = '';
+    document.getElementById('vetPinHata').textContent = '';
+  }
 }
 
 function filterAndShow(tip) {
@@ -2262,8 +2323,12 @@ function deleteVetKayit(id) {
   renderVetKayitlar();
 }
 
-// showPage vet için güncelle
-const _origShowPage = showPage;
+// showPage vet sayfası için — PIN sıfırla
+const _origShowPage = window.showPage;
+window.addEventListener('hashchange', () => {
+  // vet sayfası açılınca her zaman login panel göster
+});
+
 
 function disaAktar() {
   // CSV export
@@ -2284,6 +2349,102 @@ function tumVerileriSil() {
   save(); saveSutData(); saveTakvimData();
   showToast('Tüm veriler silindi');
   showPage('dashboard');
+}
+
+// ===== KÜPE FORMAT =====
+function formatKupe(val) {
+  if (!val) return '';
+  val = val.toUpperCase().replace(/\s/g,'');
+  if (!val.startsWith('TR')) val = 'TR' + val;
+  // Sadece harf ve rakam
+  const prefix = 'TR';
+  let nums = val.slice(2).replace(/\D/g,'');
+  // 12 rakam olacak şekilde başa 0 ekle
+  nums = nums.padStart(12,'0').slice(-12);
+  return prefix + nums;
+}
+
+// ===== EXCEL'DEN İÇE AKTAR =====
+function importFromExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      let eklenen = 0, atlanan = 0;
+      // İlk satır başlık olabilir, küpe no içermeyen satırları atla
+      rows.forEach((row, i) => {
+        if (i === 0 && String(row[0]||'').toLowerCase().includes('küpe')) return; // başlık satırı
+        const kupe = String(row[0]||'').trim().toUpperCase();
+        if (!kupe) return;
+        const formattedKupe = formatKupe(kupe);
+        if (animals.find(a=>a.kupe===formattedKupe)) { atlanan++; return; }
+        animals.push({
+          id: genId(),
+          tur: (row[2]||'inek').toLowerCase().includes('düve')||String(row[2]||'').toLowerCase().includes('duve') ? 'duve' :
+               String(row[2]||'').toLowerCase().includes('buz') ? 'buzagi' : 'inek',
+          cinsiyet: 'disi',
+          kupe: formattedKupe,
+          isim: String(row[1]||'').trim(),
+          irk: String(row[3]||'').trim(),
+          dogumTarihi: row[4] ? String(row[4]).slice(0,10) : '',
+          laktasyon: parseInt(row[5])||0,
+          not: String(row[7]||'').trim(),
+          durum: 'hayatta',
+          vaccines: [], tohumlama: [], dogumlar: []
+        });
+        eklenen++;
+      });
+      save();
+      showToast(`${eklenen} hayvan eklendi ✓${atlanan>0?' ('+atlanan+' zaten vardı)':''}`);
+      closeModal('addModal');
+      renderAnimals();
+    } catch(err) {
+      showToast('Excel okunamadı: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
+// ===== FOTOĞRAFTAN KÜPE OKU (OCR - Tesseract) =====
+async function readKupeFromPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('ocrStatus');
+  if (statusEl) { statusEl.style.display='block'; statusEl.textContent='📷 Fotoğraf işleniyor...'; }
+
+  try {
+    // Tesseract.js CDN
+    if (!window.Tesseract) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const result = await Tesseract.recognize(file, 'eng', {
+      logger: m => { if (statusEl && m.status==='recognizing text') statusEl.textContent = `📷 ${Math.round(m.progress*100)}%...`; }
+    });
+    const text = result.data.text;
+    // TR ile başlayan 14 haneli numara ara
+    const match = text.match(/TR\d{10,12}/i) || text.match(/\d{10,14}/);
+    if (match) {
+      const kupe = formatKupe(match[0]);
+      document.getElementById('f_kupe').value = kupe;
+      if (statusEl) statusEl.textContent = '✓ Küpe okundu: ' + kupe;
+    } else {
+      if (statusEl) statusEl.textContent = '⚠️ Küpe numarası bulunamadı, manuel girin';
+    }
+  } catch(err) {
+    if (statusEl) statusEl.textContent = '⚠️ OCR başarısız, manuel girin';
+  }
+  event.target.value = '';
 }
 
 // ===== MODAL YARDIMCI =====
