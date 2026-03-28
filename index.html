@@ -147,6 +147,7 @@ canvas { max-width: 100%; }
   <button class="nav-btn active" onclick="showPage('dashboard')">Ana Sayfa</button>
   <button class="nav-btn" onclick="showPage('animals')">Hayvanlar</button>
   <button class="nav-btn" onclick="showPage('reminders')">Hatırlatıcılar</button>
+  <button class="nav-btn" onclick="showPage('senkron')">Senkron</button>
   <button class="nav-btn" onclick="showPage('suru')">Sürü</button>
   <button class="nav-btn" onclick="showPage('gecmis')">Geçmiş</button>
 </nav>
@@ -229,6 +230,46 @@ canvas { max-width: 100%; }
     <button class="btn btn-outline" style="width:100%;padding:13px;margin-top:8px;" onclick="suruGrubaUygula()">⚡ Tüm Gruba Direkt Uygula</button>
     <div id="suruResult" style="margin-top:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;display:none;"></div>
   </div>
+</div>
+
+<!-- SENKRONIZASYON -->
+<div class="page" id="page-senkron">
+  <div class="sec-title" style="margin-top:0;">Yeni Protokol Başlat</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+    <div class="form-group">
+      <label class="form-label">Protokol</label>
+      <select class="form-select" id="senkron_protokol" onchange="renderSenkronAdimlar()">
+        <option value="ovsynch">Ovsynch</option>
+        <option value="presynch">Presynch</option>
+        <option value="double_ovsynch">Double Ovsynch</option>
+        <option value="cidr">CIDR + Ovsynch</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Başlangıç Tarihi (Gün 0)</label>
+      <input class="form-input" id="senkron_baslangic" type="date" oninput="renderSenkronAdimlar()">
+    </div>
+    <div id="senkronAdimlarPreview" style="margin-bottom:12px;"></div>
+    <div class="form-group">
+      <label class="form-label">Hangi Grup</label>
+      <select class="form-select" id="senkron_grup" onchange="renderSenkronList()">
+        <option value="hepsi">Tüm Aktif Hayvanlar</option>
+        <option value="fresh">Fresh</option>
+        <option value="tohumlu">Tohumlu</option>
+        <option value="acik">Açık</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <button onclick="senkronHepsiniSec(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Tümü</button>
+      <button onclick="senkronHepsiniSec(false)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Temizle</button>
+    </div>
+    <div id="senkronList" style="max-height:220px;overflow-y:auto;margin-bottom:12px;"></div>
+    <button class="btn" style="width:100%;padding:13px;" onclick="senkronBaslat()">🔄 Protokolü Başlat</button>
+    <div id="senkronResult" style="margin-top:8px;font-size:0.82rem;font-family:'JetBrains Mono',monospace;display:none;"></div>
+  </div>
+
+  <div class="sec-title">Aktif Protokoller</div>
+  <div id="aktifSenkronList"></div>
 </div>
 
 <!-- GEÇMİŞ -->
@@ -658,7 +699,7 @@ const REPRO_LABEL = { fresh: 'Fresh', tohumlu: 'Tohumlu', gebe: 'Gebe', acik: 'A
 const REPRO_TAG = { fresh: 'tag-fresh', tohumlu: 'tag-tohumlu', gebe: 'tag-gebe', acik: 'tag-acik', diger: 'tag-diger' };
 
 // ===== SAYFALAR =====
-const SWIPE_PAGES = ['dashboard','animals','reminders','suru','gecmis'];
+const SWIPE_PAGES = ['dashboard','animals','reminders','senkron','suru','gecmis'];
 
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -666,11 +707,12 @@ function showPage(page) {
   document.getElementById('page-' + page).classList.add('active');
   const idx = SWIPE_PAGES.indexOf(page);
   if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
-  document.getElementById('fabBtn').style.display = ['detail','gecmis','ayarlar','suru'].includes(page) ? 'none' : 'flex';
+  document.getElementById('fabBtn').style.display = ['detail','gecmis','ayarlar','suru','senkron'].includes(page) ? 'none' : 'flex';
   currentPage = page;
   if (page === 'dashboard') renderDashboard();
   if (page === 'animals') renderAnimals();
   if (page === 'reminders') renderReminders();
+  if (page === 'senkron') renderSenkronPage();
   if (page === 'suru') renderSuruPage();
   if (page === 'gecmis') renderGecmis();
   if (page === 'ayarlar') renderAyarlar();
@@ -880,7 +922,17 @@ function renderDetail() {
   // Süt verimi
   const milkRecords = (a.milkRecords||[]).slice(-30);
   const sonSutVal = milkRecords.length ? milkRecords[milkRecords.length-1].miktar : null;
-  const ortSut = milkRecords.length ? Math.round(milkRecords.reduce((s,m)=>s+m.miktar,0)/milkRecords.length*10)/10 : null;
+
+  function milkOrt(gun) {
+    const slice = (a.milkRecords||[]).slice(-gun);
+    if (!slice.length) return null;
+    return Math.round(slice.reduce((s,m)=>s+m.miktar,0)/slice.length*10)/10;
+  }
+  const ort3  = milkOrt(3);
+  const ort7  = milkOrt(7);
+  const ort30 = milkOrt(30);
+  const ortGenel = (a.milkRecords||[]).length ? Math.round((a.milkRecords||[]).reduce((s,m)=>s+m.miktar,0)/(a.milkRecords||[]).length*10)/10 : null;
+
   html += `<div class="detail-card">
     <div class="detail-card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>🥛 Süt Verimi</span>
@@ -890,16 +942,25 @@ function renderDetail() {
       </div>
     </div>
     ${milkRecords.length === 0 ? '<div style="color:var(--text2);font-size:0.85rem;">Kayıt yok</div>' : `
-      <div style="display:flex;gap:16px;margin-bottom:10px;">
-        <div style="text-align:center;">
-          <div style="font-size:1.4rem;font-weight:700;color:var(--accent);">${sonSutVal} L</div>
-          <div style="font-size:0.65rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">SON KAYIT</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;">
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent);">${sonSutVal??'—'}</div>
+          <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">SON</div>
         </div>
-        <div style="text-align:center;">
-          <div style="font-size:1.4rem;font-weight:700;color:var(--tohumlu);">${ortSut} L</div>
-          <div style="font-size:0.65rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${milkRecords.length}G ORT.</div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--fresh);">${ort3??'—'}</div>
+          <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">3G ORT</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--tohumlu);">${ort7??'—'}</div>
+          <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">7G ORT</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gebe);">${ort30??'—'}</div>
+          <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">30G ORT</div>
         </div>
       </div>
+      ${ortGenel !== null ? `<div style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">Genel ortalama: <b style="color:var(--text)">${ortGenel} L</b> (${(a.milkRecords||[]).length} kayıt)</div>` : ''}
       <div style="margin-bottom:4px;">
         <canvas id="milkChart" height="100"></canvas>
       </div>
@@ -1072,6 +1133,191 @@ function renderGecmis() {
     </div>`).join('');
 }
 
+// ===== SENKRONİZASYON =====
+const PROTOKOLLER = {
+  ovsynch: {
+    ad: 'Ovsynch',
+    adimlar: [
+      {gun: 0,  islem: 'GnRH', tip: 'ilac'},
+      {gun: 7,  islem: 'PGF2α', tip: 'pg'},
+      {gun: 9,  islem: 'GnRH', tip: 'ilac'},
+      {gun: 10, islem: 'Tohumlama (TAI)', tip: 'tai'},
+    ]
+  },
+  presynch: {
+    ad: 'Presynch',
+    adimlar: [
+      {gun: 0,  islem: 'PGF2α', tip: 'pg'},
+      {gun: 14, islem: 'PGF2α', tip: 'pg'},
+      {gun: 26, islem: 'GnRH', tip: 'ilac'},
+      {gun: 33, islem: 'PGF2α', tip: 'pg'},
+      {gun: 35, islem: 'GnRH', tip: 'ilac'},
+      {gun: 36, islem: 'Tohumlama (TAI)', tip: 'tai'},
+    ]
+  },
+  double_ovsynch: {
+    ad: 'Double Ovsynch',
+    adimlar: [
+      {gun: 0,  islem: 'GnRH', tip: 'ilac'},
+      {gun: 7,  islem: 'PGF2α', tip: 'pg'},
+      {gun: 9,  islem: 'GnRH', tip: 'ilac'},
+      {gun: 18, islem: 'GnRH', tip: 'ilac'},
+      {gun: 25, islem: 'PGF2α', tip: 'pg'},
+      {gun: 27, islem: 'GnRH', tip: 'ilac'},
+      {gun: 28, islem: 'Tohumlama (TAI)', tip: 'tai'},
+    ]
+  },
+  cidr: {
+    ad: 'CIDR + Ovsynch',
+    adimlar: [
+      {gun: 0,  islem: 'GnRH + CIDR Takılır', tip: 'ilac'},
+      {gun: 7,  islem: 'PGF2α + CIDR Çekilir', tip: 'pg'},
+      {gun: 9,  islem: 'GnRH', tip: 'ilac'},
+      {gun: 10, islem: 'Tohumlama (TAI)', tip: 'tai'},
+    ]
+  }
+};
+
+function addGun(tarihStr, gun) {
+  const d = new Date(tarihStr);
+  d.setDate(d.getDate() + gun);
+  return d.toISOString().slice(0,10);
+}
+
+function renderSenkronPage() {
+  document.getElementById('senkron_baslangic').value = today();
+  renderSenkronAdimlar();
+  renderSenkronList();
+  renderAktifSenkronlar();
+}
+
+function renderSenkronAdimlar() {
+  const protokolKey = document.getElementById('senkron_protokol').value;
+  const baslangic = document.getElementById('senkron_baslangic').value || today();
+  const p = PROTOKOLLER[protokolKey];
+  const tipRenk = {ilac:'var(--tohumlu)', pg:'var(--danger)', tai:'var(--fresh)'};
+  const tipBg = {ilac:'rgba(58,114,200,0.1)', pg:'rgba(224,90,58,0.1)', tai:'rgba(31,158,96,0.1)'};
+  document.getElementById('senkronAdimlarPreview').innerHTML = `
+    <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:4px;">
+      <div style="font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">${p.ad} — Adımlar</div>
+      ${p.adimlar.map(a => `
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+          <div style="background:${tipBg[a.tip]};color:${tipRenk[a.tip]};border-radius:6px;padding:2px 8px;font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;min-width:36px;text-align:center;">G${a.gun}</div>
+          <div style="flex:1;font-size:0.85rem;">${a.islem}</div>
+          <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">${addGun(baslangic, a.gun)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderSenkronList() {
+  const grup = document.getElementById('senkron_grup').value;
+  let list = animals.filter(a => !a.durum||a.durum==='hayatta');
+  if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
+  // Gebe hayvanları listede işaretle ama disable et
+  document.getElementById('senkronList').innerHTML = list.map(a => {
+    const gebe = a.repro === 'gebe';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:${gebe?'not-allowed':'pointer'};opacity:${gebe?'0.4':'1'};">
+      <input type="checkbox" class="senkron_check" id="snk_${a.id}" ${gebe?'disabled':''} checked style="width:18px;height:18px;accent-color:var(--accent);">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;">${a.kupe||'—'}</span>
+      <span style="color:var(--text2);font-size:0.78rem;">${a.isim||''}</span>
+      <span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}" style="margin-left:auto;">${gebe?'⛔ Gebe':REPRO_LABEL[a.repro||'diger']}</span>
+    </label>`;
+  }).join('') || '<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Bu grupta hayvan yok</div>';
+}
+
+function senkronHepsiniSec(sec) {
+  document.querySelectorAll('.senkron_check:not([disabled])').forEach(cb => cb.checked = sec);
+}
+
+function senkronBaslat() {
+  const protokolKey = document.getElementById('senkron_protokol').value;
+  const baslangic = document.getElementById('senkron_baslangic').value;
+  if (!baslangic) { showToast('Başlangıç tarihi gerekli!'); return; }
+  const p = PROTOKOLLER[protokolKey];
+  const secilen = animals.filter(a => document.getElementById('snk_' + a.id)?.checked);
+  if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
+
+  if (!window.senkronlar) window.senkronlar = [];
+
+  secilen.forEach(a => {
+    // Aşı kayıtları ekle (TAI hariç)
+    p.adimlar.forEach(adim => {
+      const tarih = addGun(baslangic, adim.gun);
+      if (adim.tip === 'tai') {
+        // Tohumlama kaydı oluştur
+        if (!a.tohumlamalar) a.tohumlamalar = [];
+        a.tohumlamalar.push({
+          tarih,
+          bogaAd: '',
+          bogaNo: '',
+          beklenenDogum: addGun(tarih, 280),
+          sonuc: 'bekliyor',
+          not: `${p.ad} protokolü (otomatik)`
+        });
+        a.repro = 'tohumlu';
+      } else {
+        if (!a.vaccines) a.vaccines = [];
+        a.vaccines.push({
+          isim: `[${p.ad}] ${adim.islem}`,
+          tarih,
+          periyot: '',
+          not: `Protokol günü: G${adim.gun}`
+        });
+      }
+    });
+  });
+
+  // Aktif protokol kaydı
+  window.senkronlar.push({
+    id: genId(),
+    protokol: protokolKey,
+    protokolAd: p.ad,
+    baslangic,
+    hayvanlar: secilen.map(a => a.id),
+    tarih: today()
+  });
+  localStorage.setItem('senkronlar', JSON.stringify(window.senkronlar));
+
+  save();
+  const res = document.getElementById('senkronResult');
+  res.style.display = 'block';
+  res.innerHTML = `<span style="color:var(--fresh)">✓ ${secilen.length} hayvana ${p.ad} protokolü başlatıldı! Aşı kayıtları ve tohumlama hatırlatıcıları oluşturuldu.</span>`;
+  setTimeout(() => { res.style.display='none'; renderAktifSenkronlar(); }, 3000);
+  showToast(`✓ ${p.ad} başlatıldı!`);
+}
+
+function renderAktifSenkronlar() {
+  if (!window.senkronlar) window.senkronlar = JSON.parse(localStorage.getItem('senkronlar')||'[]');
+  const el = document.getElementById('aktifSenkronList');
+  if (!window.senkronlar.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🔄</div><div style="color:var(--text2);font-size:0.85rem;">Henüz protokol başlatılmadı</div></div>';
+    return;
+  }
+  el.innerHTML = window.senkronlar.slice().reverse().map(s => {
+    const p = PROTOKOLLER[s.protokol];
+    const sonAdim = p ? addGun(s.baslangic, Math.max(...p.adimlar.map(a=>a.gun))) : '—';
+    const hayvanSayisi = s.hayvanlar.length;
+    return `<div class="detail-card" style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-weight:700;font-size:0.95rem;">${s.protokolAd}</div>
+        <button onclick="senkronSil('${s.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">sil</button>
+      </div>
+      <div style="font-size:0.78rem;color:var(--text2);font-family:'JetBrains Mono',monospace;display:flex;gap:12px;">
+        <span>🗓 ${s.baslangic}</span>
+        <span>🏁 ${sonAdim}</span>
+        <span>🐄 ${hayvanSayisi} hayvan</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function senkronSil(id) {
+  if (!confirm('Bu protokol kaydı silinsin mi?')) return;
+  window.senkronlar = window.senkronlar.filter(s => s.id !== id);
+  localStorage.setItem('senkronlar', JSON.stringify(window.senkronlar));
+  renderAktifSenkronlar();
+}
+
 // ===== AYARLAR =====
 function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
@@ -1108,8 +1354,17 @@ function suruUygula() {
   const not = document.getElementById('suru_not').value.trim();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
-  const secilen = list.filter(a => document.getElementById('sc_' + a.id)?.checked);
+  let secilen = list.filter(a => document.getElementById('sc_' + a.id)?.checked);
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
+  if (isPG(isim)) {
+    const gebeler = secilen.filter(a => a.repro === 'gebe');
+    if (gebeler.length) {
+      const devam = confirm(`⚠️ UYARI: Seçilen ${gebeler.length} hayvan GEBEDİR!\nPG gebe hayvana uygulanamaz!\n\nGebe hayvanlar otomatik çıkarılacak, diğerlerine uygulanacak. Devam edilsin mi?`);
+      if (!devam) return;
+      secilen = secilen.filter(a => a.repro !== 'gebe');
+      if (!secilen.length) { showToast('Geçerli hayvan kalmadı!'); return; }
+    }
+  }
   secilen.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not}); });
   save();
   showToast(`✓ ${secilen.length} hayvana ${isim} uygulandı`);
@@ -1132,6 +1387,15 @@ function suruGrubaUygula() {
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
   if (!list.length) { showToast('Bu grupta hayvan yok!'); return; }
+  if (isPG(isim)) {
+    const gebeler = list.filter(a => a.repro === 'gebe');
+    if (gebeler.length) {
+      const devam = confirm(`⚠️ UYARI: Grupta ${gebeler.length} gebe hayvan var!\nPG gebe hayvana uygulanamaz!\n\nGebe hayvanlar otomatik çıkarılacak. Devam edilsin mi?`);
+      if (!devam) return;
+      list = list.filter(a => a.repro !== 'gebe');
+      if (!list.length) { showToast('Geçerli hayvan kalmadı!'); return; }
+    }
+  }
   if (!confirm(`${list.length} hayvana ${isim} uygulanacak. Emin misiniz?`)) return;
   list.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not}); });
   save();
@@ -1268,12 +1532,20 @@ function saveEdit(silent=false) {
   if (!silent) { closeModal('editModal'); showToast('Kaydedildi ✓'); renderDetail(); renderDashboard(); }
 }
 
+function isPG(isim) {
+  return /pg|pgf|prostaglandin|lutalyse|estrumate|dinoprost|cloprostenol/i.test(isim);
+}
+
 function saveVaccine() {
   const isim = document.getElementById('v_isim').value.trim();
   const tarih = document.getElementById('v_tarih').value;
   if (!isim||!tarih) { showToast('Aşı adı ve tarih gerekli!'); return; }
   const a = animals.find(x => x.id === currentAnimalId);
   if (!a) return;
+  if (a.repro === 'gebe' && isPG(isim)) {
+    alert('⚠️ UYARI: Bu hayvan GEBEDİR!\nProstaglandin (PG/PGF2α) gebe hayvana uygulanamaz — abort yaptırır!\n\nKayıt engellendi.');
+    return;
+  }
   if (!a.vaccines) a.vaccines = [];
   a.vaccines.push({isim, tarih, periyot: document.getElementById('v_periyot').value, not: document.getElementById('v_not').value.trim()});
   save(); closeModal('vaccineModal'); showToast('Aşı kaydedildi ✓'); renderDetail();
