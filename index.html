@@ -424,11 +424,10 @@
   .gebe-progress { background: var(--surface2); border-radius: 20px; height: 8px; margin-top: 6px; overflow: hidden; }
   .gebe-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 20px; transition: width 0.5s; }
 
-  /* Süt rapor chart */
-  .sut-bar-wrap { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 10px; }
-  .sut-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-  .sut-bar { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s; }
-  .sut-bar-label { font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; color: var(--text2); }
+  /* Süt çizgi grafik */
+  .sut-line-chart { width: 100%; height: 90px; margin-top: 8px; }
+  .sut-line-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .sut-line-label { font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; color: var(--text2); text-align: center; flex: 1; }
 
   /* Login */
   #loginScreen input { color: var(--text); }
@@ -546,7 +545,8 @@
     <!-- Mini grafik -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
       <div style="font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:4px;">SON 7 GÜN (LİTRE)</div>
-      <div class="sut-bar-wrap" id="sutBarChart"></div>
+      <svg id="sutLineChart" class="sut-line-chart" viewBox="0 0 280 80" preserveAspectRatio="none" style="width:100%;height:80px;display:block;"></svg>
+      <div class="sut-line-labels" id="sutLineLabels"></div>
     </div>
 
     <!-- İnek bazlı süt girişi -->
@@ -640,6 +640,11 @@
       <div style="flex:1;">
         <div id="detailName" style="font-size:1.2rem;font-weight:700;">—</div>
         <div id="detailSub" style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <button onclick="navigateAnimal(-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;">⬆</button>
+        <div id="detailNavPos" style="font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-align:center;">—</div>
+        <button onclick="navigateAnimal(1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:36px;height:36px;font-size:1.1rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;">⬇</button>
       </div>
     </div>
     <div class="detail-sections" id="detailSections"></div>
@@ -1320,12 +1325,33 @@ function openDetail(id) {
   currentAnimalId = id;
   showPage('detail');
 }
+
+function getAktifList() {
+  return animals.filter(a => !a.durum || a.durum === 'hayatta');
+}
+
+function navigateAnimal(dir) {
+  const list = getAktifList();
+  const idx = list.findIndex(a => a.id === currentAnimalId);
+  if (idx === -1) return;
+  const newIdx = (idx + dir + list.length) % list.length;
+  currentAnimalId = list[newIdx].id;
+  document.getElementById('page-detail').scrollTop = 0;
+  renderDetail();
+}
+
 function renderDetail() {
   const a = animals.find(x=>x.id===currentAnimalId);
   if (!a) return;
   const turLabel = a.tur==='inek'?'İnek':a.tur==='duve'?'Düve':'Buzağı';
   document.getElementById('detailName').textContent = a.isim || a.kupe;
   document.getElementById('detailSub').textContent = `${turLabel} • ${a.kupe}`;
+
+  // Nav pozisyon
+  const list = getAktifList();
+  const idx = list.findIndex(x=>x.id===currentAnimalId);
+  const navPos = document.getElementById('detailNavPos');
+  if (navPos) navPos.textContent = `${idx+1}/${list.length}`;
 
   // Süt geçmişi (bu ineğe ait)
   const sutGecmis = sutRecords.filter(r=>r.inekId===a.id).sort((a,b)=>b.tarih.localeCompare(a.tarih)).slice(0,10);
@@ -1722,21 +1748,39 @@ function setSutFilter(f) {
   renderSut();
 }
 function renderSut() {
-  // Bar chart (son 7 gün)
-  const bars = document.getElementById('sutBarChart');
+  // Çizgi grafik (son 7 gün) - SVG
+  const svg = document.getElementById('sutLineChart');
+  const labelsEl = document.getElementById('sutLineLabels');
   const days7 = [];
   for (let i=6;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); days7.push(d.toISOString().slice(0,10)); }
   const day7sut = days7.map(ds => sutRecords.filter(r=>r.tarih===ds).reduce((s,r)=>s+r.litre*1,0));
   const maxSut = Math.max(...day7sut, 1);
-  bars.innerHTML = days7.map((ds,i) => {
-    const h = Math.max(2, (day7sut[i]/maxSut*70));
-    const label = ds.slice(8);
-    return `<div class="sut-bar-col">
-      <div style="font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--sut);">${day7sut[i]>0?day7sut[i].toFixed(0):''}</div>
-      <div class="sut-bar" style="height:${h}px;background:${ds===today()?'var(--accent2)':'var(--accent)'};"></div>
-      <div class="sut-bar-label">${label}</div>
-    </div>`;
-  }).join('');
+  const W=280, H=80, pad=8;
+  const xs = days7.map((_,i) => pad + i*(W-pad*2)/6);
+  const ys = day7sut.map(v => H - pad - (v/maxSut)*(H-pad*2));
+
+  // Alan (fill)
+  const areaPoints = xs.map((x,i)=>`${x},${ys[i]}`).join(' ');
+  const areaPath = `M${xs[0]},${H} ` + xs.map((x,i)=>`L${x},${ys[i]}`).join(' ') + ` L${xs[xs.length-1]},${H} Z`;
+
+  // Çizgi path
+  const linePath = `M` + xs.map((x,i)=>`${x},${ys[i]}`).join(' L');
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="sutGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2563eb" stop-opacity="0.3"/>
+        <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${areaPath}" fill="url(#sutGrad)"/>
+    <path d="${linePath}" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${xs.map((x,i)=>`
+      <circle cx="${x}" cy="${ys[i]}" r="${days7[i]===today()?4:3}" fill="${days7[i]===today()?'#60a5fa':'#2563eb'}" stroke="${days7[i]===today()?'white':'#60a5fa'}" stroke-width="1.5"/>
+      ${day7sut[i]>0?`<text x="${x}" y="${ys[i]-7}" text-anchor="middle" font-size="7" fill="#93c5fd" font-family="monospace">${day7sut[i].toFixed(0)}</text>`:''}
+    `).join('')}
+  `;
+  labelsEl.innerHTML = days7.map(ds=>`<div class="sut-line-label">${ds.slice(8)}</div>`).join('');
 
   // İnek bazlı hızlı giriş
   const inekSutList = document.getElementById('inekSutList');
@@ -1984,9 +2028,44 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 // Enter ile giriş
 document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key==='Enter') emailGiris(); });
 
+// ===== SWIPE (sayfa arası geçiş) =====
+const navPages = ['dashboard','animals','sut','takvim','rapor'];
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeActive = false;
+
+document.getElementById('appScreen').addEventListener('touchstart', e => {
+  // Modal açıksa swipe yapma
+  if (document.querySelector('.modal-overlay.open')) return;
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+  swipeActive = true;
+}, { passive: true });
+
+document.getElementById('appScreen').addEventListener('touchend', e => {
+  if (!swipeActive) return;
+  swipeActive = false;
+  // Detail sayfasında hayvan navigasyonu (yukarı/aşağı)
+  if (currentPage === 'detail') {
+    const dy = swipeStartY - e.changedTouches[0].clientY;
+    const dx = Math.abs(swipeStartX - e.changedTouches[0].clientX);
+    if (Math.abs(dy) > 60 && Math.abs(dy) > dx * 1.5) {
+      navigateAnimal(dy > 0 ? 1 : -1);
+    }
+    return;
+  }
+  // Diğer sayfalarda sağ/sol swipe ile sayfa geçişi
+  const dx = swipeStartX - e.changedTouches[0].clientX;
+  const dy = Math.abs(swipeStartY - e.changedTouches[0].clientY);
+  if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.7) return;
+  const idx = navPages.indexOf(currentPage);
+  if (idx === -1) return;
+  if (dx > 0 && idx < navPages.length - 1) showPage(navPages[idx + 1]);
+  if (dx < 0 && idx > 0) showPage(navPages[idx - 1]);
+}, { passive: true });
+
 // Başlangıç
 window.addEventListener('load', () => {
-  // Firebase hazır değilse bekle
   setTimeout(() => {
     if (!window._firebaseReady) {
       document.getElementById('loginError').textContent = 'Firebase yüklenemedi. İnternet bağlantını kontrol et.';
