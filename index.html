@@ -782,8 +782,10 @@
         <label class="form-label">Küpe No *</label>
         <div style="display:flex;gap:6px;align-items:center;">
           <input class="form-input" id="f_kupe" placeholder="TR..." oninput="this.value=this.value.toUpperCase()" onblur="this.value=formatKupe(this.value)" style="flex:1;">
-          <button type="button" onclick="document.getElementById('kupeCamera').click()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;" title="Fotoğraftan oku">📷</button>
+          <button type="button" onclick="document.getElementById('kupeCamera').click()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;" title="Kamera">📷</button>
+          <button type="button" onclick="document.getElementById('kupeGaleri').click()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;" title="Galeriden Seç">🖼️</button>
           <input type="file" id="kupeCamera" accept="image/*" capture="environment" style="display:none" onchange="readKupeFromPhoto(event)">
+          <input type="file" id="kupeGaleri" accept="image/*" style="display:none" onchange="readKupeFromPhoto(event)">
         </div>
         <div id="ocrStatus" style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;display:none;"></div>
       </div>
@@ -2462,30 +2464,30 @@ let swipeStartX = 0;
 let swipeStartY = 0;
 let swipeActive = false;
 
-document.getElementById('appScreen').addEventListener('touchstart', e => {
-  // Modal açıksa swipe yapma
+document.addEventListener('touchstart', e => {
   if (document.querySelector('.modal-overlay.open')) return;
   swipeStartX = e.touches[0].clientX;
   swipeStartY = e.touches[0].clientY;
   swipeActive = true;
 }, { passive: true });
 
-document.getElementById('appScreen').addEventListener('touchend', e => {
+document.addEventListener('touchend', e => {
   if (!swipeActive) return;
   swipeActive = false;
-  // Detail sayfasında hayvan navigasyonu (yukarı/aşağı)
+  const dx = swipeStartX - e.changedTouches[0].clientX;
+  const dy = Math.abs(swipeStartY - e.changedTouches[0].clientY);
+
+  // Detail sayfasında yukarı/aşağı swipe ile hayvan geçişi
   if (currentPage === 'detail') {
-    const dy = swipeStartY - e.changedTouches[0].clientY;
-    const dx = Math.abs(swipeStartX - e.changedTouches[0].clientX);
-    if (Math.abs(dy) > 60 && Math.abs(dy) > dx * 1.5) {
-      navigateAnimal(dy > 0 ? 1 : -1);
+    const dyRaw = swipeStartY - e.changedTouches[0].clientY;
+    if (Math.abs(dyRaw) > 50 && Math.abs(dyRaw) > Math.abs(dx) * 1.5) {
+      navigateAnimal(dyRaw > 0 ? 1 : -1);
     }
     return;
   }
-  // Diğer sayfalarda sağ/sol swipe ile sayfa geçişi
-  const dx = swipeStartX - e.changedTouches[0].clientX;
-  const dy = Math.abs(swipeStartY - e.changedTouches[0].clientY);
-  if (Math.abs(dx) < 60 || dy > Math.abs(dx) * 0.7) return;
+
+  // Yatay swipe — sağa/sola sayfa geçişi
+  if (Math.abs(dx) < 50 || dy > Math.abs(dx) * 0.8) return;
   const idx = navPages.indexOf(currentPage);
   if (idx === -1) return;
   if (dx > 0 && idx < navPages.length - 1) showPage(navPages[idx + 1]);
