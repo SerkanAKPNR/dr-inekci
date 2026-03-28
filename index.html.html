@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dr. İnekçi</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dr. İnekçi">
+<meta name="theme-color" content="#2563eb">
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBWKZ_75Y2dXf8WgPPQcULh4cWT8u6ZbRs",
+    authDomain: "dr-inekci.firebaseapp.com",
+    projectId: "dr-inekci",
+    storageBucket: "dr-inekci.firebasestorage.app",
+    messagingSenderId: "191675606665",
+    appId: "1:191675606665:web:4a9ff55f5519daed6f4858"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  let unsubscribe = null;
+
+  window._firebaseReady = true;
+
+  window._emailGiris = async (email, pass) => {
+    return signInWithEmailAndPassword(auth, email, pass);
+  };
+  window._emailKayit = async (email, pass) => {
+    return createUserWithEmailAndPassword(auth, email, pass);
+  };
+  window._googleGiris = async () => {
+    return signInWithPopup(auth, googleProvider);
+  };
+  window._cikis = async () => {
+    if (unsubscribe) unsubscribe();
+    return signOut(auth);
+  };
+
+  window._firebaseSave = async (data) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid), { animals: JSON.stringify(data), updatedAt: Date.now() });
+    } catch(e) { console.error('Save error:', e); }
+  };
+
+  window._firebaseSaveSut = async (data) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid + '_sut'), { records: JSON.stringify(data), updatedAt: Date.now() });
+    } catch(e) { console.error('Sut save error:', e); }
+  };
+
+  window._firebaseSaveTakvim = async (data) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid + '_takvim'), { records: JSON.stringify(data), updatedAt: Date.now() });
+    } catch(e) {}
+  };
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Yükle
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists() && snap.data().animals) {
+          window.animals = JSON.parse(snap.data().animals) || [];
+        }
+        const snapSut = await getDoc(doc(db, 'users', user.uid + '_sut'));
+        if (snapSut.exists() && snapSut.data().records) {
+          window.sutRecords = JSON.parse(snapSut.data().records) || [];
+        }
+        const snapTakvim = await getDoc(doc(db, 'users', user.uid + '_takvim'));
+        if (snapTakvim.exists() && snapTakvim.data().records) {
+          window.suruTakvimi = JSON.parse(snapTakvim.data().records) || [];
+        }
+      } catch(e) { console.error('Load error:', e); }
+
+      window._currentUser = user;
+      window._loginSuccess && window._loginSuccess(user);
+    } else {
+      window._currentUser = null;
+      window._logoutSuccess && window._logoutSuccess();
+    }
+  });
+</script>
+
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1e3a5f;
+    --accent: #2563eb;
+    --accent2: #60a5fa;
+    --accent3: #93c5fd;
+    --text: #e2e8f0;
+    --text2: #64748b;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --success: #10b981;
+    --inek: #60a5fa;
+    --duve: #a78bfa;
+    --buzagi: #34d399;
+    --sut: #bfdbfe;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Crimson Pro', serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header h1 { font-size: 1.2rem; font-weight: 700; color: var(--accent2); letter-spacing: 0.5px; }
+  .header .sub { font-size: 0.72rem; color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+
+  /* Nav */
+  .nav {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav-btn {
+    flex: 1; min-width: 72px;
+    padding: 10px 6px;
+    background: none; border: none;
+    color: var(--text2);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .nav-btn.active { color: var(--accent2); border-bottom-color: var(--accent); font-weight: 700; font-size: 0.92rem; }
+
+  /* Pages */
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: var(--accent); }
+  .stat-num { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+  .stat-label { font-size: 0.65rem; color: var(--text2); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Süt özet kartı */
+  .sut-ozet {
+    background: linear-gradient(135deg, #1e3a5f 0%, #1a2236 100%);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sut-ozet::before {
+    content: '🥛';
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    font-size: 2rem;
+    opacity: 0.3;
+  }
+  .sut-ozet-num { font-size: 2.5rem; font-weight: 700; color: var(--sut); line-height: 1; }
+  .sut-ozet-label { font-size: 0.72rem; color: var(--text2); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+  .sut-ozet-row { display: flex; gap: 16px; margin-top: 10px; }
+  .sut-ozet-mini { text-align: center; flex: 1; }
+  .sut-ozet-mini-num { font-size: 1rem; font-weight: 700; color: var(--accent2); }
+  .sut-ozet-mini-label { font-size: 0.62rem; color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+
+  /* Section title */
+  .sec-title {
+    font-size: 0.68rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    margin-top: 20px;
+  }
+
+  /* Animal cards */
+  .animal-list { display: flex; flex-direction: column; gap: 8px; }
+  .animal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .animal-card:hover { border-color: var(--accent); }
+  .animal-card .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .animal-card .name { font-size: 1rem; font-weight: 600; }
+  .tag {
+    font-size: 0.62rem;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .tag-inek { background: rgba(96,165,250,0.15); color: var(--inek); }
+  .tag-duve { background: rgba(167,139,250,0.15); color: var(--duve); }
+  .tag-buzagi { background: rgba(52,211,153,0.15); color: var(--buzagi); }
+  .animal-card .info { font-size: 0.78rem; color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+  .animal-card .info span { margin-right: 10px; }
+  .sut-badge {
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(191,219,254,0.1);
+    color: var(--sut);
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid rgba(191,219,254,0.2);
+  }
+
+  /* Buttons */
+  .btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #1d4ed8; }
+  .btn-outline { background: none; border: 1px solid var(--accent); color: var(--accent); }
+  .btn-outline:hover { background: rgba(37,99,235,0.1); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+  .fab {
+    position: fixed; bottom: 24px; right: 20px;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white; border: none;
+    font-size: 1.6rem; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(37,99,235,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; transition: transform 0.2s;
+  }
+  .fab:hover { transform: scale(1.1); }
+
+  /* Search */
+  .search-bar {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    outline: none;
+  }
+  .search-bar:focus { border-color: var(--accent); }
+  .search-bar::placeholder { color: var(--text2); }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chip.active { border-color: var(--accent); color: var(--accent2); background: rgba(37,99,235,0.1); }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 500;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    width: 100%; max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px 16px 32px;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 16px; color: var(--accent2); }
+
+  /* Form */
+  .form-group { margin-bottom: 12px; }
+  .form-label { display: block; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .form-input, .form-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'Crimson Pro', serif;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+  .form-select option { background: var(--surface2); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Detail */
+  .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .back-btn { background: none; border: none; color: var(--accent); font-size: 1.4rem; cursor: pointer; padding: 4px; }
+  .detail-sections { display: flex; flex-direction: column; gap: 12px; }
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .detail-card-title { font-size: 0.66rem; font-family: 'JetBrains Mono', monospace; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key { color: var(--text2); }
+  .detail-val { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 0.83rem; }
+
+  /* Reminder cards */
+  .reminder-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
+  .reminder-card.overdue { border-color: var(--danger); }
+  .reminder-card.soon { border-color: var(--warn); }
+  .reminder-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .reminder-animal { font-weight: 600; font-size: 0.95rem; }
+  .reminder-days { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; padding: 2px 8px; border-radius: 20px; }
+  .overdue .reminder-days { background: rgba(239,68,68,0.2); color: var(--danger); }
+  .soon .reminder-days { background: rgba(245,158,11,0.2); color: var(--warn); }
+  .reminder-vaccine { font-size: 0.8rem; color: var(--text2); }
+
+  /* Süt kayıt listesi */
+  .sut-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .sut-item:last-child { border-bottom: none; }
+  .sut-item-date { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text2); }
+  .sut-item-litre { font-weight: 700; color: var(--sut); font-family: 'JetBrains Mono', monospace; }
+
+  /* Laktasyon badge */
+  .laktasyon-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(167,139,250,0.1);
+    border: 1px solid rgba(167,139,250,0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--duve);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem; font-weight: 700;
+    opacity: 0; transition: all 0.3s;
+    z-index: 999; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Empty */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  /* Gebelik progress */
+  .gebe-progress { background: var(--surface2); border-radius: 20px; height: 8px; margin-top: 6px; overflow: hidden; }
+  .gebe-progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 20px; transition: width 0.5s; }
+
+  /* Süt rapor chart */
+  .sut-bar-wrap { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 10px; }
+  .sut-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .sut-bar { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s; }
+  .sut-bar-label { font-size: 0.6rem; font-family: 'JetBrains Mono', monospace; color: var(--text2); }
+
+  /* Login */
+  #loginScreen input { color: var(--text); }
+  #loginScreen input::placeholder { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- GİRİŞ EKRANI -->
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+  <div style="font-size:3rem;margin-bottom:16px;">🐄</div>
+  <h1 style="font-size:1.6rem;font-weight:700;color:var(--accent2);margin-bottom:6px;">Dr. İnekçi</h1>
+  <p style="color:var(--text2);font-size:0.82rem;margin-bottom:32px;text-align:center;font-family:'JetBrains Mono',monospace;">Sağmal İnek Yönetim Sistemi</p>
+  <div style="width:100%;max-width:320px;">
+    <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:1rem;margin-bottom:10px;outline:none;font-family:'Crimson Pro',serif;">
+    <input id="loginPassword" type="password" placeholder="Şifre (min 6 karakter)" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:1rem;margin-bottom:10px;outline:none;font-family:'Crimson Pro',serif;">
+    <button onclick="emailGiris()" style="background:var(--accent);color:white;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;font-family:'Crimson Pro',serif;">Giriş Yap</button>
+    <button onclick="emailKayit()" style="background:none;color:var(--accent2);border:1px solid var(--accent);border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;margin-bottom:8px;font-family:'Crimson Pro',serif;">İlk kez? Kayıt Ol</button>
+    <button onclick="googleGiris()" style="background:white;color:#333;border:none;border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;margin-bottom:8px;font-family:'Crimson Pro',serif;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.3 0 24 0 14.7 0 6.7 5.5 2.7 13.5l7.8 6C12.4 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.6 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.2-10 7.2-17z"/><path fill="#FBBC05" d="M10.5 28.5c-.5-1.5-.8-3.2-.8-4.9s.3-3.3.8-4.8l-7.8-6C.9 15.8 0 19.8 0 24s.9 8.2 2.7 11.7l7.8-7.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.2-8.4 2.2-6.3 0-11.6-3.7-13.5-9l-7.8 6C6.7 42.5 14.7 48 24 48z"/></svg>
+      Google ile Giriş
+    </button>
+    <button onclick="misafirGiris()" style="background:none;color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;font-family:'Crimson Pro',serif;">👁️ Misafir Olarak Gir</button>
+  </div>
+  <div id="loginError" style="color:var(--danger);font-size:0.82rem;margin-top:14px;text-align:center;max-width:300px;"></div>
+</div>
+
+<!-- ANA UYGULAMA -->
+<div id="appScreen" style="display:none;">
+  <div class="header">
+    <div>
+      <h1>🐄 Dr. İnekçi</h1>
+      <div class="sub" id="headerSub">Yükleniyor...</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="showPage('sut')" style="background:rgba(191,219,254,0.1);border:1px solid var(--accent);border-radius:8px;padding:6px 10px;color:var(--sut);font-size:0.8rem;cursor:pointer;">🥛 Süt</button>
+      <button onclick="showPage('ayarlar')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text2);font-size:0.8rem;cursor:pointer;">⚙️</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showPage('dashboard')">Ana Sayfa</button>
+    <button class="nav-btn" onclick="showPage('animals')">Hayvanlar</button>
+    <button class="nav-btn" onclick="showPage('sut')">🥛 Süt</button>
+    <button class="nav-btn" onclick="showPage('takvim')">📅 Takvim</button>
+    <button class="nav-btn" onclick="showPage('rapor')">📊 Rapor</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="stats" id="statsGrid">
+      <div class="stat-card"><div class="stat-num" style="color:var(--inek)">0</div><div class="stat-label">İnek</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--duve)">0</div><div class="stat-label">Düve</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--buzagi)">0</div><div class="stat-label">Buzağı</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--text)">0</div><div class="stat-label">Toplam</div></div>
+    </div>
+
+    <!-- Bugünkü süt -->
+    <div class="sut-ozet" onclick="showPage('sut')" style="cursor:pointer;">
+      <div style="font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:6px;">BUGÜNKÜ SÜT</div>
+      <div class="sut-ozet-num" id="dashBugunSut">0</div>
+      <div class="sut-ozet-label">litre</div>
+      <div class="sut-ozet-row">
+        <div class="sut-ozet-mini"><div class="sut-ozet-mini-num" id="dashDunSut">0</div><div class="sut-ozet-mini-label">Dün (L)</div></div>
+        <div class="sut-ozet-mini"><div class="sut-ozet-mini-num" id="dashHaftaSut">0</div><div class="sut-ozet-mini-label">Bu Hafta (L)</div></div>
+        <div class="sut-ozet-mini"><div class="sut-ozet-mini-num" id="dashAySut">0</div><div class="sut-ozet-mini-label">Bu Ay (L)</div></div>
+        <div class="sut-ozet-mini"><div class="sut-ozet-mini-num" id="dashInek1Sut">—</div><div class="sut-ozet-mini-label">Ort/İnek</div></div>
+      </div>
+    </div>
+
+    <div class="sec-title">Yaklaşan Aşı / İşlem</div>
+    <div id="dashReminders"><div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Yaklaşan işlem yok 👍</div></div>
+
+    <div id="dashGebelik" style="margin-top:4px;"></div>
+    <div id="dashLaktasyon" style="margin-top:4px;"></div>
+  </div>
+
+  <!-- HAYVANLAR -->
+  <div class="page" id="page-animals">
+    <input class="search-bar" type="text" placeholder="Küpe no veya isim ara..." id="searchInput" oninput="renderAnimals()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div class="filters" id="filterChips" style="margin-bottom:0;">
+        <button class="chip active" onclick="setFilter('hepsi')">Hepsi</button>
+        <button class="chip" onclick="setFilter('inek')">İnek</button>
+        <button class="chip" onclick="setFilter('duve')">Düve</button>
+        <button class="chip" onclick="setFilter('buzagi')">Buzağı</button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="toggleTopluSil()">Toplu Sil</button>
+    </div>
+    <div id="topluSilPanel" style="display:none;background:var(--surface);border:1px solid var(--danger);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:8px;">Silmek istediğin hayvanları seç:</div>
+      <div id="topluSilList"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="btn btn-danger" style="flex:1" onclick="executeTopluSil()">Seçilenleri Sil</button>
+        <button class="btn btn-outline" style="flex:1" onclick="toggleTopluSil()">İptal</button>
+      </div>
+    </div>
+    <div class="animal-list" id="animalList"></div>
+  </div>
+
+  <!-- SÜT TAKİBİ -->
+  <div class="page" id="page-sut">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div class="sec-title" style="margin:0;">Süt Kayıtları</div>
+      <button class="btn btn-sm" onclick="openSutModal()">+ Kayıt Ekle</button>
+    </div>
+
+    <!-- Hızlı tarih filtre -->
+    <div class="filters" style="margin-bottom:12px;">
+      <button class="chip active" onclick="setSutFilter('hafta')" id="sf_hafta">Bu Hafta</button>
+      <button class="chip" onclick="setSutFilter('ay')" id="sf_ay">Bu Ay</button>
+      <button class="chip" onclick="setSutFilter('tumü')" id="sf_tumu">Tümü</button>
+    </div>
+
+    <!-- Mini grafik -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:0.68rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:4px;">SON 7 GÜN (LİTRE)</div>
+      <div class="sut-bar-wrap" id="sutBarChart"></div>
+    </div>
+
+    <!-- İnek bazlı süt girişi -->
+    <div class="sec-title">İnek Bazlı Hızlı Giriş</div>
+    <div id="inekSutList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+
+    <!-- Kayıt listesi -->
+    <div class="sec-title">Kayıt Geçmişi</div>
+    <div id="sutList"></div>
+  </div>
+
+  <!-- TAKVİM -->
+  <div class="page" id="page-takvim">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="sec-title" style="margin:0;">Sürü Takvimi</div>
+      <button class="btn btn-sm" onclick="openTakvimModal()">+ Ekle</button>
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <button onclick="takvimAyDegistir(-1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;">‹</button>
+        <div id="takvimAyBaslik" style="font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;font-size:0.85rem;"></div>
+        <button onclick="takvimAyDegistir(1)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;color:var(--accent);cursor:pointer;font-size:1.1rem;">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Pt</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Sa</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Ça</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Pe</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Cu</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Ct</div>
+        <div style="text-align:center;font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Pz</div>
+      </div>
+      <div id="takvimGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+    </div>
+
+    <div class="sec-title">Periyodik Uygulamalar</div>
+    <div id="takvimListe"></div>
+  </div>
+
+  <!-- RAPOR -->
+  <div class="page" id="page-rapor">
+    <div class="sec-title" style="margin-top:0;">Dönem Raporu</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;">
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Başlangıç</label>
+          <input class="form-input" id="rapor_bas" type="date" onchange="renderRapor()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Bitiş</label>
+          <input class="form-input" id="rapor_bit" type="date" onchange="renderRapor()">
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button onclick="raporFiltre(7)" class="chip">7 gün</button>
+        <button onclick="raporFiltre(30)" class="chip">30 gün</button>
+        <button onclick="raporFiltre(90)" class="chip">3 ay</button>
+        <button onclick="raporFiltre(0)" class="chip">Tümü</button>
+      </div>
+    </div>
+    <div id="raporIcerik"></div>
+  </div>
+
+  <!-- AYARLAR -->
+  <div class="page" id="page-ayarlar">
+    <div class="sec-title" style="margin-top:0;">Hesap</div>
+    <div class="detail-card" style="margin-bottom:16px;">
+      <div class="detail-row"><span class="detail-key">Kullanıcı</span><span class="detail-val" id="ayarlarUser">—</span></div>
+      <div class="detail-row"><span class="detail-key">Toplam Hayvan</span><span class="detail-val" id="ayarlarToplam">—</span></div>
+      <div class="detail-row"><span class="detail-key">Süt Kaydı</span><span class="detail-val" id="ayarlarSut">—</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="btn" onclick="disaAktar()" style="width:100%;padding:14px;">📤 Verileri Dışa Aktar (Excel)</button>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <button class="btn btn-outline" onclick="cikisYap()" style="width:100%;padding:14px;">🚪 Çıkış Yap</button>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <button class="btn btn-outline" onclick="tumVerileriSil()" style="width:100%;padding:14px;border-color:var(--danger);color:var(--danger);">🗑️ Tüm Verileri Sil</button>
+    </div>
+    <div class="sec-title">Uygulama Hakkında</div>
+    <div class="detail-card">
+      <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.03-v1</span></div>
+      <div class="detail-row"><span class="detail-key">Geliştirici</span><span class="detail-val">Dr. İnekçi</span></div>
+    </div>
+  </div>
+
+  <!-- DETAIL PAGE -->
+  <div class="page" id="page-detail">
+    <div class="detail-header">
+      <button class="back-btn" onclick="showPage('animals')">←</button>
+      <div style="flex:1;">
+        <div id="detailName" style="font-size:1.2rem;font-weight:700;">—</div>
+        <div id="detailSub" style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">—</div>
+      </div>
+    </div>
+    <div class="detail-sections" id="detailSections"></div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fabBtn" onclick="openAddModal()">+</button>
+</div>
+
+<!-- === MODALS === -->
+
+<!-- HAYVAN EKLE -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Hayvan Ekle</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tür</label>
+        <select class="form-select" id="f_tur" onchange="turDegisti()">
+          <option value="inek">İnek</option>
+          <option value="duve">Düve</option>
+          <option value="buzagi">Buzağı</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cinsiyet</label>
+        <select class="form-select" id="f_cinsiyet">
+          <option value="disi">Dişi</option>
+          <option value="erkek">Erkek</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Küpe No *</label>
+        <input class="form-input" id="f_kupe" placeholder="TR..." oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">İsim</label>
+        <input class="form-input" id="f_isim" placeholder="Sarıkız...">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Irk</label>
+        <input class="form-input" id="f_irk" placeholder="Holstein, Simental...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Doğum Tarihi</label>
+        <input class="form-input" id="f_dogum" type="date">
+      </div>
+    </div>
+    <!-- Laktasyon (sadece inek/düve) -->
+    <div id="f_laktasyon_wrap">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Laktasyon No</label>
+          <input class="form-input" id="f_laktasyon" type="number" placeholder="1" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Son Buzağılama</label>
+          <input class="form-input" id="f_buzagilama" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kuru Dönemi Başlangıcı</label>
+        <input class="form-input" id="f_kuru" type="date">
+      </div>
+    </div>
+    <!-- Anne (buzağı için) -->
+    <div id="f_anne_wrap" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Anne (Küpe No)</label>
+        <select class="form-select" id="f_anne"><option value="">— Seç —</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <textarea class="form-input" id="f_not" placeholder="Özel not..." style="min-height:60px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn" style="flex:1" onclick="saveAnimal()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('addModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- HAYVAN DÜZENLE -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Hayvanı Düzenle</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tür</label>
+        <select class="form-select" id="e_tur" onchange="eTurDegisti()">
+          <option value="inek">İnek</option>
+          <option value="duve">Düve</option>
+          <option value="buzagi">Buzağı</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cinsiyet</label>
+        <select class="form-select" id="e_cinsiyet">
+          <option value="disi">Dişi</option>
+          <option value="erkek">Erkek</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Küpe No</label>
+        <input class="form-input" id="e_kupe" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">İsim</label>
+        <input class="form-input" id="e_isim">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Irk</label>
+        <input class="form-input" id="e_irk">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Doğum Tarihi</label>
+        <input class="form-input" id="e_dogum" type="date">
+      </div>
+    </div>
+    <div id="e_laktasyon_wrap">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Laktasyon No</label>
+          <input class="form-input" id="e_laktasyon" type="number" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Son Buzağılama</label>
+          <input class="form-input" id="e_buzagilama" type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kuru Dönemi Başlangıcı</label>
+        <input class="form-input" id="e_kuru" type="date">
+      </div>
+    </div>
+    <div id="e_anne_wrap" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Anne (Küpe No)</label>
+        <select class="form-select" id="e_anne"><option value="">— Seç —</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Durum</label>
+      <select class="form-select" id="e_durum" onchange="document.getElementById('e_durum_detay').style.display=this.value!=='hayatta'?'block':'none'">
+        <option value="hayatta">Hayatta</option>
+        <option value="satildi">Satıldı</option>
+        <option value="oldu">Öldü</option>
+        <option value="kesildi">Kesildi</option>
+      </select>
+    </div>
+    <div id="e_durum_detay" style="display:none;">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tarih</label>
+          <input class="form-input" id="e_durum_tarih" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fiyat (₺)</label>
+          <input class="form-input" id="e_durum_fiyat" type="number">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Not</label>
+        <input class="form-input" id="e_durum_not" placeholder="Kime satıldı, sebep...">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <textarea class="form-input" id="e_not" style="min-height:60px;resize:vertical;"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn" style="flex:1" onclick="saveEdit()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('editModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- AŞI EKLE -->
+<div class="modal-overlay" id="vaccineModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Aşı / İlaç Ekle</div>
+    <div class="form-group">
+      <label class="form-label">Aşı / İlaç Adı</label>
+      <input class="form-input" id="v_isim" placeholder="Şap, Brucella, Vitamin...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tarih</label>
+        <input class="form-input" id="v_tarih" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tekrar (gün)</label>
+        <input class="form-input" id="v_periyot" type="number" placeholder="180">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <input class="form-input" id="v_not" placeholder="Doz, uygulayan...">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveVaccine()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('vaccineModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOHUMLAMA / GEBELİK -->
+<div class="modal-overlay" id="tohumlamaModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🧬 Tohumlama / Gebelik</div>
+    <div class="form-group">
+      <label class="form-label">Tohumlama Tarihi</label>
+      <input class="form-input" id="t_tarih" type="date">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Yöntem</label>
+        <select class="form-select" id="t_yontem">
+          <option value="dogal">Doğal</option>
+          <option value="suni">Suni Tohumlama</option>
+          <option value="embriyo">Embriyo Transfer</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Boğa / Semen</label>
+        <input class="form-input" id="t_boga" placeholder="Boğa adı / kodu">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gebelik Teyit Tarihi</label>
+      <input class="form-input" id="t_teyit" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <input class="form-input" id="t_not" placeholder="Ek bilgi...">
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:14px;font-size:0.78rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">
+      ℹ️ Sığırda gebelik süresi ~280 gün. Tahmini doğum tarihi otomatik hesaplanır.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveTohumlama()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('tohumlamaModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- SÜT KAYIT MODAL -->
+<div class="modal-overlay" id="sutModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🥛 Süt Kaydı Ekle</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Tarih</label>
+        <input class="form-input" id="s_tarih" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Toplam Litre</label>
+        <input class="form-input" id="s_litre" type="number" placeholder="0" step="0.1" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">İnek (opsiyonel)</label>
+      <select class="form-select" id="s_inek">
+        <option value="">— Tüm Sürü —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <input class="form-input" id="s_not" placeholder="Düşük üretim sebebi vs...">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveSut()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('sutModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- DOĞUM KAYDI -->
+<div class="modal-overlay" id="dogumModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🐮 Doğum Kaydı</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Doğum Tarihi</label>
+        <input class="form-input" id="d_tarih" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Buzağı Sayısı</label>
+        <select class="form-select" id="d_sayi" onchange="updateBuzagiInputs()">
+          <option value="1">1 — Tek</option>
+          <option value="2">2 — İkiz</option>
+        </select>
+      </div>
+    </div>
+    <div id="d_buzagilar"></div>
+    <div class="form-group">
+      <label class="form-label">Doğum Notu</label>
+      <input class="form-input" id="d_not" placeholder="Normal doğum, güç doğum...">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveDogum()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('dogumModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAKVİM MODAL -->
+<div class="modal-overlay" id="takvimModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Periyodik Uygulama Ekle</div>
+    <div class="form-group">
+      <label class="form-label">Uygulama Adı</label>
+      <input class="form-input" id="tk_isim" placeholder="Şap, Brucella, Parazit ilacı...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Son Uygulama</label>
+        <input class="form-input" id="tk_tarih" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Periyot (gün)</label>
+        <input class="form-input" id="tk_periyot" type="number" placeholder="180">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Not</label>
+      <input class="form-input" id="tk_not" placeholder="Doz, uygulayan...">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveTakvim()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('takvimModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== VERİ =====
+let animals = [];
+let sutRecords = [];
+let suruTakvimi = [];
+let currentAnimalId = null;
+let currentFilter = 'hepsi';
+let sutFilter = 'hafta';
+let misafirModu = false;
+let takvimAy = new Date();
+let editAnimalId = null;
+
+// Firebase hazır olana kadar bekle
+window._loginSuccess = function(user) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('ayarlarUser').textContent = user.email || user.displayName || '—';
+  showPage('dashboard');
+};
+window._logoutSuccess = function() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+};
+
+function save() {
+  if (misafirModu) return;
+  if (window._firebaseSave) window._firebaseSave(animals);
+}
+function saveSutData() {
+  if (misafirModu) return;
+  if (window._firebaseSaveSut) window._firebaseSaveSut(sutRecords);
+}
+function saveTakvimData() {
+  if (misafirModu) return;
+  if (window._firebaseSaveTakvim) window._firebaseSaveTakvim(suruTakvimi);
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function today() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function calcAge(dob) {
+  if (!dob) return '—';
+  const d = new Date(dob), now = new Date();
+  const months = (now.getFullYear()-d.getFullYear())*12 + (now.getMonth()-d.getMonth());
+  if (months < 1) return Math.max(0,Math.floor((now-d)/86400000)) + ' gün';
+  if (months < 24) return months + ' ay';
+  return Math.floor(months/12) + ' yıl ' + (months%12) + ' ay';
+}
+function daysUntil(dateStr) {
+  const d = new Date(dateStr), now = new Date();
+  now.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.round((d-now)/86400000);
+}
+function nextDate(tarih, periyot) {
+  if (!tarih || !periyot) return null;
+  const d = new Date(tarih);
+  d.setDate(d.getDate() + parseInt(periyot));
+  return d.toISOString().slice(0,10);
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  const [y,m,d] = s.split('-');
+  return `${d}.${m}.${y}`;
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== AUTH =====
+async function emailGiris() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  try {
+    await window._emailGiris(email, pass);
+  } catch(e) {
+    err.textContent = 'Giriş başarısız: ' + (e.code === 'auth/invalid-credential' ? 'E-posta veya şifre hatalı' : e.message);
+  }
+}
+async function emailKayit() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  try {
+    await window._emailKayit(email, pass);
+  } catch(e) {
+    err.textContent = 'Kayıt başarısız: ' + e.message;
+  }
+}
+async function googleGiris() {
+  const err = document.getElementById('loginError');
+  err.textContent = '';
+  try {
+    await window._googleGiris();
+  } catch(e) {
+    err.textContent = 'Google girişi başarısız: ' + e.message;
+  }
+}
+function misafirGiris() {
+  misafirModu = true;
+  animals = demoData();
+  sutRecords = demoSut();
+  suruTakvimi = [];
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('ayarlarUser').textContent = 'Misafir';
+  showPage('dashboard');
+}
+async function cikisYap() {
+  animals = []; sutRecords = []; suruTakvimi = [];
+  misafirModu = false;
+  if (window._cikis) await window._cikis();
+  else { window._logoutSuccess && window._logoutSuccess(); }
+}
+
+// ===== DEMO DATA =====
+function demoData() {
+  return [
+    {id:'d1',tur:'inek',cinsiyet:'disi',kupe:'TR150001',isim:'Sarıkız',irk:'Holstein',dogumTarihi:'2020-03-15',laktasyon:3,buzagilama:'2025-11-10',durum:'hayatta',vaccines:[{id:'v1',isim:'Şap',tarih:'2025-10-01',periyot:180,not:''}],tohumlama:[],not:''},
+    {id:'d2',tur:'inek',cinsiyet:'disi',kupe:'TR150002',isim:'Benekli',irk:'Simental',dogumTarihi:'2019-07-22',laktasyon:4,buzagilama:'2025-09-05',durum:'hayatta',vaccines:[],tohumlama:[{id:'t1',tarih:'2025-12-01',yontem:'suni',boga:'Pamir',teyit:'2025-12-25',not:''}],not:''},
+    {id:'d3',tur:'duve',cinsiyet:'disi',kupe:'TR150003',isim:'Pamuk',irk:'Holstein',dogumTarihi:'2023-05-10',laktasyon:0,durum:'hayatta',vaccines:[],tohumlama:[],not:''},
+    {id:'d4',tur:'buzagi',cinsiyet:'disi',kupe:'TR150004',isim:'Mini',irk:'Holstein',dogumTarihi:'2025-11-10',anneId:'d1',durum:'hayatta',vaccines:[],not:''},
+  ];
+}
+function demoSut() {
+  const records = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().slice(0,10);
+    records.push({id:genId(), tarih:ds, litre: (20 + Math.random()*8).toFixed(1)*1, inekId:'', not:''});
+  }
+  return records;
+}
+
+// ===== NAVIGATION =====
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  const navMap = {dashboard:0,animals:1,sut:2,takvim:3,rapor:4};
+  if (navMap[page] !== undefined) document.querySelectorAll('.nav-btn')[navMap[page]].classList.add('active');
+  const fabHide = ['detail','ayarlar','takvim','rapor'];
+  document.getElementById('fabBtn').style.display = fabHide.includes(page) ? 'none' : 'flex';
+
+  if (page==='dashboard') renderDashboard();
+  if (page==='animals') renderAnimals();
+  if (page==='sut') renderSut();
+  if (page==='takvim') renderTakvim();
+  if (page==='rapor') renderRapor();
+  if (page==='ayarlar') renderAyarlar();
+  if (page==='detail') renderDetail();
+}
+
+function filterAndShow(tip) {
+  currentFilter = tip;
+  showPage('animals');
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const aktif = a => !a.durum || a.durum === 'hayatta';
+  const inekler = animals.filter(a => a.tur==='inek' && aktif(a));
+  const duveler = animals.filter(a => a.tur==='duve' && aktif(a));
+  const buzagilar = animals.filter(a => a.tur==='buzagi' && aktif(a));
+  const toplam = inekler.length + duveler.length + buzagilar.length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card" onclick="filterAndShow('inek')"><div class="stat-num" style="color:var(--inek)">${inekler.length}</div><div class="stat-label">İnek</div></div>
+    <div class="stat-card" onclick="filterAndShow('duve')"><div class="stat-num" style="color:var(--duve)">${duveler.length}</div><div class="stat-label">Düve</div></div>
+    <div class="stat-card" onclick="filterAndShow('buzagi')"><div class="stat-num" style="color:var(--buzagi)">${buzagilar.length}</div><div class="stat-label">Buzağı</div></div>
+    <div class="stat-card" onclick="filterAndShow('hepsi')"><div class="stat-num" style="color:var(--text)">${toplam}</div><div class="stat-label">Toplam</div></div>
+  `;
+  document.getElementById('headerSub').textContent = `Toplam ${animals.length} hayvan`;
+
+  // Süt özet
+  const bugun = today();
+  const dun = (() => { const d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); })();
+  const haftaBas = (() => { const d=new Date(); d.setDate(d.getDate()-6); return d.toISOString().slice(0,10); })();
+  const ayBas = (() => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; })();
+
+  const sutBugun = sutRecords.filter(r=>r.tarih===bugun).reduce((s,r)=>s+r.litre*1,0);
+  const sutDun = sutRecords.filter(r=>r.tarih===dun).reduce((s,r)=>s+r.litre*1,0);
+  const sutHafta = sutRecords.filter(r=>r.tarih>=haftaBas).reduce((s,r)=>s+r.litre*1,0);
+  const sutAy = sutRecords.filter(r=>r.tarih>=ayBas).reduce((s,r)=>s+r.litre*1,0);
+  const inekSayisi = inekler.length || 1;
+  const ortSut = inekler.length ? (sutBugun/inekSayisi).toFixed(1) : '—';
+
+  document.getElementById('dashBugunSut').textContent = sutBugun.toFixed(1);
+  document.getElementById('dashDunSut').textContent = sutDun.toFixed(1);
+  document.getElementById('dashHaftaSut').textContent = sutHafta.toFixed(1);
+  document.getElementById('dashAySut').textContent = sutAy.toFixed(1);
+  document.getElementById('dashInek1Sut').textContent = ortSut;
+
+  // Yaklaşan aşılar
+  const upcoming = [];
+  animals.filter(a=>aktif(a)).forEach(a => {
+    (a.vaccines||[]).forEach(v => {
+      const nd = nextDate(v.tarih, v.periyot);
+      if (nd) { const days = daysUntil(nd); if (days <= 14) upcoming.push({a,v,days,nd}); }
+    });
+  });
+  upcoming.sort((a,b)=>a.days-b.days);
+  const dr = document.getElementById('dashReminders');
+  if (upcoming.length === 0) {
+    dr.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Yaklaşan aşı / işlem yok 👍</div>';
+  } else {
+    dr.innerHTML = upcoming.slice(0,3).map(u => {
+      const cls = u.days < 0 ? 'overdue' : 'soon';
+      const label = u.days < 0 ? `${Math.abs(u.days)} gün gecikti` : u.days===0 ? 'Bugün!' : `${u.days} gün kaldı`;
+      return `<div class="reminder-card ${cls}" onclick="openDetail('${u.a.id}')">
+        <div class="reminder-top"><span class="reminder-animal">${u.a.isim||u.a.kupe}</span><span class="reminder-days">${label}</span></div>
+        <div class="reminder-vaccine">${u.v.isim}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Yaklaşan doğumlar (tohumlama + 280 gün)
+  const gebeInekler = animals.filter(a => aktif(a) && a.tohumlama && a.tohumlama.length > 0).map(a => {
+    const son = a.tohumlama[a.tohumlama.length-1];
+    const tahmini = new Date(son.tarih);
+    tahmini.setDate(tahmini.getDate()+280);
+    const dogumStr = tahmini.toISOString().slice(0,10);
+    return {a, dogumStr, days: daysUntil(dogumStr)};
+  }).filter(x => x.days <= 30 && x.days >= -14).sort((a,b)=>a.days-b.days);
+
+  const dg = document.getElementById('dashGebelik');
+  if (gebeInekler.length > 0) {
+    dg.innerHTML = '<div class="sec-title">Yaklaşan Doğumlar 🐮</div>' + gebeInekler.map(({a,dogumStr,days}) => {
+      const cls = days<0?'overdue':'soon';
+      const label = days<0?`${Math.abs(days)} gün önce!`:days===0?'Bugün!':`${days} gün kaldı`;
+      const pct = Math.max(0,Math.min(100,((280-(Math.max(days,0)))/280*100)));
+      return `<div class="reminder-card ${cls}" onclick="openDetail('${a.id}')">
+        <div class="reminder-top"><span class="reminder-animal">🐄 ${a.isim||a.kupe}</span><span class="reminder-days">${label}</span></div>
+        <div class="reminder-vaccine">Tahmini doğum: ${fmtDate(dogumStr)}</div>
+        <div class="gebe-progress"><div class="gebe-progress-bar" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join('');
+  } else { dg.innerHTML = ''; }
+
+  // Kuru dönem uyarıları
+  const kuruUyari = animals.filter(a => aktif(a) && a.tur==='inek' && a.kuru).map(a => {
+    const days = daysUntil(a.kuru);
+    return {a, days};
+  }).filter(x => x.days <= 21 && x.days >= 0).sort((a,b)=>a.days-b.days);
+
+  const dl = document.getElementById('dashLaktasyon');
+  if (kuruUyari.length > 0) {
+    dl.innerHTML = '<div class="sec-title">Yaklaşan Kuru Dönem 🌿</div>' + kuruUyari.map(({a,days}) => {
+      const cls = days<=7?'overdue':'soon';
+      return `<div class="reminder-card ${cls}" onclick="openDetail('${a.id}')">
+        <div class="reminder-top"><span class="reminder-animal">🐄 ${a.isim||a.kupe}</span><span class="reminder-days">${days} gün kaldı</span></div>
+        <div class="reminder-vaccine">Kuru dönemi: ${fmtDate(a.kuru)}</div>
+      </div>`;
+    }).join('');
+  } else { dl.innerHTML = ''; }
+}
+
+// ===== HAYVANLAR =====
+function renderAnimals() {
+  const aktif = a => !a.durum || a.durum === 'hayatta';
+  const query = (document.getElementById('searchInput').value||'').toLowerCase();
+  let list = animals.filter(a => aktif(a));
+  if (currentFilter !== 'hepsi') list = list.filter(a => a.tur === currentFilter);
+  if (query) list = list.filter(a => (a.kupe||'').toLowerCase().includes(query) || (a.isim||'').toLowerCase().includes(query));
+
+  const container = document.getElementById('animalList');
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🐄</div><div>Hayvan bulunamadı</div></div>';
+    return;
+  }
+
+  const bugun = today();
+  container.innerHTML = list.map(a => {
+    const turLabel = a.tur==='inek'?'İnek':a.tur==='duve'?'Düve':'Buzağı';
+    const tagCls = `tag-${a.tur}`;
+
+    // Bugün ne kadar süt verdi
+    const gunSut = sutRecords.filter(r => r.tarih===bugun && r.inekId===a.id).reduce((s,r)=>s+r.litre*1,0);
+    const sutBadge = (a.tur==='inek' && gunSut>0) ? `<span class="sut-badge">🥛 ${gunSut}L bugün</span>` : '';
+
+    // Laktasyon
+    const lakBadge = a.laktasyon !== undefined && a.laktasyon !== null && a.tur !== 'buzagi'
+      ? `<span class="laktasyon-badge">L${a.laktasyon}</span>` : '';
+
+    // Yaklaşan aşı
+    let asiUyari = '';
+    (a.vaccines||[]).forEach(v => {
+      const nd = nextDate(v.tarih,v.periyot);
+      if (nd) { const d = daysUntil(nd); if (d<=7) asiUyari = `<span style="color:${d<0?'var(--danger)':'var(--warn)'};font-size:0.7rem;">💉 ${d<0?'Gecikmiş':d+'g kaldı'}</span>`; }
+    });
+
+    return `<div class="animal-card" onclick="openDetail('${a.id}')">
+      <div class="top">
+        <span class="name">${a.isim || a.kupe}</span>
+        <div style="display:flex;gap:6px;align-items:center;">${lakBadge}<span class="tag ${tagCls}">${turLabel}</span></div>
+      </div>
+      <div class="info">
+        <span>${a.kupe}</span>
+        <span>${a.irk||'—'}</span>
+        <span>${calcAge(a.dogumTarihi)}</span>
+        ${sutBadge}
+        ${asiUyari}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('#filterChips .chip').forEach((c,i) => {
+    c.classList.toggle('active', ['hepsi','inek','duve','buzagi'][i]===f);
+  });
+  renderAnimals();
+}
+
+// ===== DETAIL =====
+function openDetail(id) {
+  currentAnimalId = id;
+  showPage('detail');
+}
+function renderDetail() {
+  const a = animals.find(x=>x.id===currentAnimalId);
+  if (!a) return;
+  const turLabel = a.tur==='inek'?'İnek':a.tur==='duve'?'Düve':'Buzağı';
+  document.getElementById('detailName').textContent = a.isim || a.kupe;
+  document.getElementById('detailSub').textContent = `${turLabel} • ${a.kupe}`;
+
+  // Süt geçmişi (bu ineğe ait)
+  const sutGecmis = sutRecords.filter(r=>r.inekId===a.id).sort((a,b)=>b.tarih.localeCompare(a.tarih)).slice(0,10);
+  // Toplam süt
+  const toplamSut = sutRecords.filter(r=>r.inekId===a.id).reduce((s,r)=>s+r.litre*1,0);
+
+  // Gebelik durumu
+  let gebelikHtml = '';
+  if (a.tohumlama && a.tohumlama.length > 0) {
+    const son = a.tohumlama[a.tohumlama.length-1];
+    const tahmini = new Date(son.tarih);
+    tahmini.setDate(tahmini.getDate()+280);
+    const dogumStr = tahmini.toISOString().slice(0,10);
+    const days = daysUntil(dogumStr);
+    const pct = Math.max(0,Math.min(100,((280-Math.max(days,0))/280*100)));
+    const gecen = Math.min(280, 280-Math.max(days,0));
+    gebelikHtml = `
+      <div class="detail-card">
+        <div class="detail-card-title">🤰 Gebelik Durumu</div>
+        <div class="detail-row"><span class="detail-key">Tohumlama</span><span class="detail-val">${fmtDate(son.tarih)}</span></div>
+        <div class="detail-row"><span class="detail-key">Yöntem</span><span class="detail-val">${son.yontem||'—'}</span></div>
+        <div class="detail-row"><span class="detail-key">Boğa/Semen</span><span class="detail-val">${son.boga||'—'}</span></div>
+        <div class="detail-row"><span class="detail-key">Geçen Gün</span><span class="detail-val">${gecen} / 280</span></div>
+        <div class="detail-row"><span class="detail-key">Tahmini Doğum</span><span class="detail-val">${fmtDate(dogumStr)}</span></div>
+        <div class="gebe-progress" style="margin-top:8px;"><div class="gebe-progress-bar" style="width:${pct}%"></div></div>
+      </div>`;
+  }
+
+  document.getElementById('detailSections').innerHTML = `
+    <!-- Temel bilgiler -->
+    <div class="detail-card">
+      <div class="detail-card-title">Temel Bilgiler</div>
+      <div class="detail-row"><span class="detail-key">Küpe No</span><span class="detail-val">${a.kupe}</span></div>
+      <div class="detail-row"><span class="detail-key">Tür</span><span class="detail-val">${turLabel}</span></div>
+      <div class="detail-row"><span class="detail-key">Irk</span><span class="detail-val">${a.irk||'—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Doğum Tarihi</span><span class="detail-val">${fmtDate(a.dogumTarihi)}</span></div>
+      <div class="detail-row"><span class="detail-key">Yaş</span><span class="detail-val">${calcAge(a.dogumTarihi)}</span></div>
+      ${a.tur!=='buzagi'?`<div class="detail-row"><span class="detail-key">Laktasyon No</span><span class="detail-val">${a.laktasyon!==undefined?a.laktasyon:'—'}</span></div>`:''}
+      ${a.buzagilama?`<div class="detail-row"><span class="detail-key">Son Buzağılama</span><span class="detail-val">${fmtDate(a.buzagilama)}</span></div>`:''}
+      ${a.kuru?`<div class="detail-row"><span class="detail-key">Kuru Dönemi</span><span class="detail-val">${fmtDate(a.kuru)}</span></div>`:''}
+      ${a.not?`<div class="detail-row"><span class="detail-key">Not</span><span class="detail-val" style="max-width:60%;text-align:right;">${a.not}</span></div>`:''}
+    </div>
+
+    <!-- Süt bilgileri (inekler için) -->
+    ${a.tur==='inek'?`
+    <div class="detail-card">
+      <div class="detail-card-title" style="display:flex;justify-content:space-between;">
+        🥛 Süt Kaydı
+        <button onclick="openSutModalForInek('${a.id}')" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.7rem;">+ Ekle</button>
+      </div>
+      <div class="detail-row"><span class="detail-key">Toplam (kayıtlı)</span><span class="detail-val">${toplamSut.toFixed(1)} L</span></div>
+      ${sutGecmis.length>0?sutGecmis.map(r=>`<div class="sut-item"><span class="sut-item-date">${fmtDate(r.tarih)}</span><span class="sut-item-litre">${r.litre} L</span></div>`).join(''):'<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Henüz kayıt yok</div>'}
+    </div>`:''}
+
+    <!-- Gebelik -->
+    ${gebelikHtml}
+
+    <!-- Aşı/İlaç -->
+    <div class="detail-card">
+      <div class="detail-card-title" style="display:flex;justify-content:space-between;">
+        💉 Aşı / İlaç
+        <button onclick="openVaccineModal('${a.id}')" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.7rem;">+ Ekle</button>
+      </div>
+      ${(a.vaccines||[]).length===0?'<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Henüz kayıt yok</div>':
+        (a.vaccines||[]).map(v => {
+          const nd = nextDate(v.tarih,v.periyot);
+          const days = nd?daysUntil(nd):null;
+          const cls = days!==null?(days<0?'var(--danger)':days<=7?'var(--warn)':'var(--success)'):'var(--text2)';
+          return `<div class="detail-row">
+            <div><div style="font-weight:600;font-size:0.9rem;">${v.isim}</div><div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${fmtDate(v.tarih)}</div></div>
+            <div style="text-align:right;">${nd?`<div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:${cls};">Sonraki: ${fmtDate(nd)}</div>`:''}
+            <button onclick="deleteVaccine('${a.id}','${v.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;margin-top:2px;">Sil</button></div>
+          </div>`;
+        }).join('')}
+    </div>
+
+    <!-- Tohumlama geçmişi -->
+    ${a.tur!=='buzagi'?`
+    <div class="detail-card">
+      <div class="detail-card-title" style="display:flex;justify-content:space-between;">
+        🧬 Tohumlama
+        <button onclick="openTohumlamaModal('${a.id}')" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.7rem;">+ Ekle</button>
+      </div>
+      ${(a.tohumlama||[]).length===0?'<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Henüz kayıt yok</div>':
+        (a.tohumlama||[]).slice().reverse().map(t=>`
+        <div class="detail-row">
+          <div><div style="font-weight:600;font-size:0.9rem;">${fmtDate(t.tarih)}</div><div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${t.yontem||''} ${t.boga?'• '+t.boga:''}</div></div>
+          <div style="text-align:right;"><div style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text2);">${t.teyit?'✓ Teyit: '+fmtDate(t.teyit):''}</div>
+          <button onclick="deleteTohumlama('${a.id}','${t.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">Sil</button></div>
+        </div>`).join('')}
+    </div>`:''}
+
+    <!-- Doğum kayıtları -->
+    ${a.tur!=='buzagi'?`
+    <div class="detail-card">
+      <div class="detail-card-title" style="display:flex;justify-content:space-between;">
+        🐮 Doğum Kayıtları
+        <button onclick="openDogumModal('${a.id}')" class="btn btn-sm btn-outline" style="padding:3px 8px;font-size:0.7rem;">+ Ekle</button>
+      </div>
+      ${(a.dogumlar||[]).length===0?'<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Henüz kayıt yok</div>':
+        (a.dogumlar||[]).slice().reverse().map(d=>`
+        <div class="detail-row">
+          <span>${fmtDate(d.tarih)} — ${d.sayi} buzağı</span>
+          <button onclick="deleteDogum('${a.id}','${d.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">Sil</button>
+        </div>`).join('')}
+    </div>`:''}
+
+    <!-- İşlemler -->
+    <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="openEditModal('${a.id}')">✏️ Düzenle</button>
+      <button class="btn btn-sm" style="background:var(--danger);" onclick="deleteAnimal('${a.id}')">🗑️ Sil</button>
+    </div>
+  `;
+}
+
+// ===== HAYVAN EKLE/DÜZENLE =====
+function openAddModal() {
+  document.getElementById('f_kupe').value = '';
+  document.getElementById('f_isim').value = '';
+  document.getElementById('f_irk').value = '';
+  document.getElementById('f_dogum').value = '';
+  document.getElementById('f_laktasyon').value = '';
+  document.getElementById('f_buzagilama').value = '';
+  document.getElementById('f_kuru').value = '';
+  document.getElementById('f_not').value = '';
+  document.getElementById('f_tur').value = 'inek';
+  turDegisti();
+  // Doldur anne seçimi
+  const anneSelect = document.getElementById('f_anne');
+  anneSelect.innerHTML = '<option value="">— Seç —</option>' + animals.filter(a=>a.tur==='inek').map(a=>`<option value="${a.id}">${a.isim||a.kupe}</option>`).join('');
+  document.getElementById('addModal').classList.add('open');
+}
+function turDegisti() {
+  const tur = document.getElementById('f_tur').value;
+  document.getElementById('f_laktasyon_wrap').style.display = tur==='buzagi'?'none':'block';
+  document.getElementById('f_anne_wrap').style.display = tur==='buzagi'?'block':'none';
+}
+function saveAnimal() {
+  const kupe = document.getElementById('f_kupe').value.trim();
+  if (!kupe) { showToast('Küpe no zorunlu!'); return; }
+  const tur = document.getElementById('f_tur').value;
+  const a = {
+    id: genId(), tur,
+    cinsiyet: document.getElementById('f_cinsiyet').value,
+    kupe,
+    isim: document.getElementById('f_isim').value.trim(),
+    irk: document.getElementById('f_irk').value.trim(),
+    dogumTarihi: document.getElementById('f_dogum').value,
+    not: document.getElementById('f_not').value.trim(),
+    durum: 'hayatta',
+    vaccines: [], tohumlama: [], dogumlar: []
+  };
+  if (tur !== 'buzagi') {
+    a.laktasyon = document.getElementById('f_laktasyon').value ? parseInt(document.getElementById('f_laktasyon').value) : 0;
+    a.buzagilama = document.getElementById('f_buzagilama').value;
+    a.kuru = document.getElementById('f_kuru').value;
+  } else {
+    a.anneId = document.getElementById('f_anne').value;
+  }
+  animals.push(a);
+  save();
+  closeModal('addModal');
+  showToast('Hayvan eklendi ✓');
+  renderAnimals();
+}
+
+function openEditModal(id) {
+  editAnimalId = id;
+  const a = animals.find(x=>x.id===id);
+  if (!a) return;
+  document.getElementById('e_tur').value = a.tur;
+  document.getElementById('e_cinsiyet').value = a.cinsiyet||'disi';
+  document.getElementById('e_kupe').value = a.kupe;
+  document.getElementById('e_isim').value = a.isim||'';
+  document.getElementById('e_irk').value = a.irk||'';
+  document.getElementById('e_dogum').value = a.dogumTarihi||'';
+  document.getElementById('e_laktasyon').value = a.laktasyon!==undefined?a.laktasyon:'';
+  document.getElementById('e_buzagilama').value = a.buzagilama||'';
+  document.getElementById('e_kuru').value = a.kuru||'';
+  document.getElementById('e_durum').value = a.durum||'hayatta';
+  document.getElementById('e_durum_detay').style.display = a.durum&&a.durum!=='hayatta'?'block':'none';
+  document.getElementById('e_durum_tarih').value = a.durumTarih||'';
+  document.getElementById('e_durum_fiyat').value = a.durumFiyat||'';
+  document.getElementById('e_durum_not').value = a.durumNot||'';
+  document.getElementById('e_not').value = a.not||'';
+  eTurDegisti();
+  const anneSelect = document.getElementById('e_anne');
+  anneSelect.innerHTML = '<option value="">— Seç —</option>' + animals.filter(x=>x.tur==='inek'&&x.id!==id).map(x=>`<option value="${x.id}"${x.id===a.anneId?' selected':''}>${x.isim||x.kupe}</option>`).join('');
+  document.getElementById('editModal').classList.add('open');
+}
+function eTurDegisti() {
+  const tur = document.getElementById('e_tur').value;
+  document.getElementById('e_laktasyon_wrap').style.display = tur==='buzagi'?'none':'block';
+  document.getElementById('e_anne_wrap').style.display = tur==='buzagi'?'block':'none';
+}
+function saveEdit() {
+  const a = animals.find(x=>x.id===editAnimalId);
+  if (!a) return;
+  a.tur = document.getElementById('e_tur').value;
+  a.cinsiyet = document.getElementById('e_cinsiyet').value;
+  a.kupe = document.getElementById('e_kupe').value.trim();
+  a.isim = document.getElementById('e_isim').value.trim();
+  a.irk = document.getElementById('e_irk').value.trim();
+  a.dogumTarihi = document.getElementById('e_dogum').value;
+  a.not = document.getElementById('e_not').value.trim();
+  a.durum = document.getElementById('e_durum').value;
+  if (a.durum !== 'hayatta') {
+    a.durumTarih = document.getElementById('e_durum_tarih').value;
+    a.durumFiyat = document.getElementById('e_durum_fiyat').value;
+    a.durumNot = document.getElementById('e_durum_not').value;
+  }
+  if (a.tur !== 'buzagi') {
+    a.laktasyon = document.getElementById('e_laktasyon').value ? parseInt(document.getElementById('e_laktasyon').value) : 0;
+    a.buzagilama = document.getElementById('e_buzagilama').value;
+    a.kuru = document.getElementById('e_kuru').value;
+  } else {
+    a.anneId = document.getElementById('e_anne').value;
+  }
+  save();
+  closeModal('editModal');
+  showToast('Kaydedildi ✓');
+  renderDetail();
+}
+
+function deleteAnimal(id) {
+  if (!confirm('Bu hayvanı silmek istediğinden emin misin?')) return;
+  animals = animals.filter(a=>a.id!==id);
+  save();
+  showPage('animals');
+  showToast('Silindi');
+}
+
+// Toplu sil
+let topluSilAcik = false;
+function toggleTopluSil() {
+  topluSilAcik = !topluSilAcik;
+  const panel = document.getElementById('topluSilPanel');
+  panel.style.display = topluSilAcik ? 'block' : 'none';
+  if (topluSilAcik) {
+    const list = document.getElementById('topluSilList');
+    const aktif = animals.filter(a=>!a.durum||a.durum==='hayatta');
+    list.innerHTML = aktif.map(a=>`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.9rem;">
+      <input type="checkbox" class="ts_cb" data-id="${a.id}" style="width:16px;height:16px;accent-color:var(--danger);">
+      <span>${a.isim||a.kupe}</span><span style="color:var(--text2);font-size:0.75rem;font-family:'JetBrains Mono',monospace;">${a.kupe}</span>
+    </label>`).join('');
+  }
+}
+function executeTopluSil() {
+  const selected = [...document.querySelectorAll('.ts_cb:checked')].map(c=>c.dataset.id);
+  if (selected.length===0) { showToast('Hiç seçilmedi'); return; }
+  if (!confirm(`${selected.length} hayvan silinecek. Emin misin?`)) return;
+  animals = animals.filter(a=>!selected.includes(a.id));
+  save(); toggleTopluSil(); renderAnimals();
+  showToast(`${selected.length} hayvan silindi`);
+}
+
+// ===== AŞI =====
+let vaccineAnimalId = null;
+function openVaccineModal(id) {
+  vaccineAnimalId = id;
+  document.getElementById('v_isim').value = '';
+  document.getElementById('v_tarih').value = today();
+  document.getElementById('v_periyot').value = '';
+  document.getElementById('v_not').value = '';
+  document.getElementById('vaccineModal').classList.add('open');
+}
+function saveVaccine() {
+  const a = animals.find(x=>x.id===vaccineAnimalId);
+  if (!a) return;
+  const isim = document.getElementById('v_isim').value.trim();
+  if (!isim) { showToast('Aşı adı girin'); return; }
+  if (!a.vaccines) a.vaccines = [];
+  a.vaccines.push({id:genId(), isim, tarih:document.getElementById('v_tarih').value, periyot:document.getElementById('v_periyot').value, not:document.getElementById('v_not').value});
+  save(); closeModal('vaccineModal'); showToast('Aşı eklendi ✓'); renderDetail();
+}
+function deleteVaccine(animalId, vaccineId) {
+  const a = animals.find(x=>x.id===animalId);
+  if (!a) return;
+  a.vaccines = (a.vaccines||[]).filter(v=>v.id!==vaccineId);
+  save(); renderDetail();
+}
+
+// ===== TOHUMLAMA =====
+let tohumlamaAnimalId = null;
+function openTohumlamaModal(id) {
+  tohumlamaAnimalId = id;
+  document.getElementById('t_tarih').value = today();
+  document.getElementById('t_yontem').value = 'suni';
+  document.getElementById('t_boga').value = '';
+  document.getElementById('t_teyit').value = '';
+  document.getElementById('t_not').value = '';
+  document.getElementById('tohumlamaModal').classList.add('open');
+}
+function saveTohumlama() {
+  const a = animals.find(x=>x.id===tohumlamaAnimalId);
+  if (!a) return;
+  if (!a.tohumlama) a.tohumlama = [];
+  a.tohumlama.push({
+    id:genId(),
+    tarih: document.getElementById('t_tarih').value,
+    yontem: document.getElementById('t_yontem').value,
+    boga: document.getElementById('t_boga').value.trim(),
+    teyit: document.getElementById('t_teyit').value,
+    not: document.getElementById('t_not').value.trim()
+  });
+  save(); closeModal('tohumlamaModal'); showToast('Tohumlama kaydedildi ✓'); renderDetail();
+}
+function deleteTohumlama(animalId, tid) {
+  const a = animals.find(x=>x.id===animalId);
+  if (!a) return;
+  a.tohumlama = (a.tohumlama||[]).filter(t=>t.id!==tid);
+  save(); renderDetail();
+}
+
+// ===== DOĞUM =====
+let dogumAnimalId = null;
+function openDogumModal(id) {
+  dogumAnimalId = id;
+  document.getElementById('d_tarih').value = today();
+  document.getElementById('d_sayi').value = '1';
+  document.getElementById('d_not').value = '';
+  updateBuzagiInputs();
+  document.getElementById('dogumModal').classList.add('open');
+}
+function updateBuzagiInputs() {
+  const sayi = parseInt(document.getElementById('d_sayi').value);
+  let html = '';
+  for (let i=0;i<sayi;i++) {
+    html += `<div class="form-row" style="margin-bottom:8px;">
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Buzağı ${i+1} Küpe</label><input class="form-input" id="d_kupe_${i}" placeholder="TR..." oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group" style="margin-bottom:0;"><label class="form-label">Cinsiyet</label><select class="form-select" id="d_cin_${i}"><option value="disi">Dişi</option><option value="erkek">Erkek</option></select></div>
+    </div>`;
+  }
+  document.getElementById('d_buzagilar').innerHTML = html;
+}
+function saveDogum() {
+  const anne = animals.find(x=>x.id===dogumAnimalId);
+  if (!anne) return;
+  const tarih = document.getElementById('d_tarih').value;
+  const sayi = parseInt(document.getElementById('d_sayi').value);
+  const not = document.getElementById('d_not').value;
+  if (!anne.dogumlar) anne.dogumlar = [];
+  const dogumId = genId();
+  anne.dogumlar.push({id:dogumId, tarih, sayi, not});
+  anne.laktasyon = (anne.laktasyon||0) + 1;
+  anne.buzagilama = tarih;
+
+  // Buzağıları ekle
+  for (let i=0;i<sayi;i++) {
+    const kupe = document.getElementById('d_kupe_'+i)?.value?.trim();
+    const cin = document.getElementById('d_cin_'+i)?.value;
+    if (kupe) {
+      animals.push({id:genId(), tur:'buzagi', cinsiyet:cin||'disi', kupe, dogumTarihi:tarih, anneId:dogumAnimalId, durum:'hayatta', vaccines:[], tohumlama:[], not:''});
+    }
+  }
+  save(); closeModal('dogumModal'); showToast('Doğum kaydedildi ✓'); renderDetail();
+}
+function deleteDogum(animalId, did) {
+  const a = animals.find(x=>x.id===animalId);
+  if (!a) return;
+  a.dogumlar = (a.dogumlar||[]).filter(d=>d.id!==did);
+  save(); renderDetail();
+}
+
+// ===== SÜT TAKİBİ =====
+function openSutModal() {
+  document.getElementById('s_tarih').value = today();
+  document.getElementById('s_litre').value = '';
+  document.getElementById('s_not').value = '';
+  document.getElementById('s_inek').value = '';
+  const sel = document.getElementById('s_inek');
+  sel.innerHTML = '<option value="">— Tüm Sürü —</option>' + animals.filter(a=>a.tur==='inek'&&(!a.durum||a.durum==='hayatta')).map(a=>`<option value="${a.id}">${a.isim||a.kupe}</option>`).join('');
+  document.getElementById('sutModal').classList.add('open');
+}
+function openSutModalForInek(inekId) {
+  openSutModal();
+  document.getElementById('s_inek').value = inekId;
+}
+function saveSut() {
+  const litre = parseFloat(document.getElementById('s_litre').value);
+  if (!litre || litre <= 0) { showToast('Litre girin'); return; }
+  sutRecords.push({
+    id:genId(),
+    tarih: document.getElementById('s_tarih').value,
+    litre,
+    inekId: document.getElementById('s_inek').value,
+    not: document.getElementById('s_not').value.trim()
+  });
+  saveSutData(); closeModal('sutModal'); showToast('Süt kaydedildi ✓'); renderSut();
+}
+function setSutFilter(f) {
+  sutFilter = f;
+  ['hafta','ay','tumu'].forEach(x => document.getElementById('sf_'+x)?.classList.toggle('active', x===f));
+  renderSut();
+}
+function renderSut() {
+  // Bar chart (son 7 gün)
+  const bars = document.getElementById('sutBarChart');
+  const days7 = [];
+  for (let i=6;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); days7.push(d.toISOString().slice(0,10)); }
+  const day7sut = days7.map(ds => sutRecords.filter(r=>r.tarih===ds).reduce((s,r)=>s+r.litre*1,0));
+  const maxSut = Math.max(...day7sut, 1);
+  bars.innerHTML = days7.map((ds,i) => {
+    const h = Math.max(2, (day7sut[i]/maxSut*70));
+    const label = ds.slice(8);
+    return `<div class="sut-bar-col">
+      <div style="font-size:0.6rem;font-family:'JetBrains Mono',monospace;color:var(--sut);">${day7sut[i]>0?day7sut[i].toFixed(0):''}</div>
+      <div class="sut-bar" style="height:${h}px;background:${ds===today()?'var(--accent2)':'var(--accent)'};"></div>
+      <div class="sut-bar-label">${label}</div>
+    </div>`;
+  }).join('');
+
+  // İnek bazlı hızlı giriş
+  const inekSutList = document.getElementById('inekSutList');
+  const inekler = animals.filter(a=>a.tur==='inek'&&(!a.durum||a.durum==='hayatta'));
+  if (inekler.length === 0) {
+    inekSutList.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;">Henüz inek eklenmemiş</div>';
+  } else {
+    inekSutList.innerHTML = inekler.map(a => {
+      const bugunSut = sutRecords.filter(r=>r.tarih===today()&&r.inekId===a.id).reduce((s,r)=>s+r.litre*1,0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-weight:600;font-size:0.9rem;">${a.isim||a.kupe}</div>
+          <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">Bugün: ${bugunSut>0?bugunSut+' L':'henüz yok'}</div>
+        </div>
+        <button onclick="openSutModalForInek('${a.id}')" class="btn btn-sm" style="background:rgba(37,99,235,0.2);color:var(--accent2);border:1px solid var(--accent);">+ Ekle</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Liste filtre
+  let records = [...sutRecords].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  if (sutFilter === 'hafta') {
+    const bas = new Date(); bas.setDate(bas.getDate()-6);
+    records = records.filter(r=>r.tarih>=bas.toISOString().slice(0,10));
+  } else if (sutFilter === 'ay') {
+    const bas = new Date(); bas.setMonth(bas.getMonth()-1);
+    records = records.filter(r=>r.tarih>=bas.toISOString().slice(0,10));
+  }
+
+  const sutList = document.getElementById('sutList');
+  if (records.length === 0) {
+    sutList.innerHTML = '<div class="empty"><div class="empty-icon">🥛</div><div>Bu dönemde kayıt yok</div></div>';
+    return;
+  }
+
+  // Tarihe göre grupla
+  const grouped = {};
+  records.forEach(r => { if (!grouped[r.tarih]) grouped[r.tarih]=[]; grouped[r.tarih].push(r); });
+  sutList.innerHTML = Object.entries(grouped).map(([tarih, recs]) => {
+    const toplam = recs.reduce((s,r)=>s+r.litre*1,0);
+    const inek = id => { const a=animals.find(x=>x.id===id); return a?a.isim||a.kupe:'Sürü'; };
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-weight:700;font-size:0.9rem;">${fmtDate(tarih)}</span>
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--sut);font-size:0.9rem;">${toplam.toFixed(1)} L toplam</span>
+      </div>
+      ${recs.map(r=>`<div class="sut-item">
+        <span>${inek(r.inekId)}</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="sut-item-litre">${r.litre} L</span>
+          <button onclick="deleteSut('${r.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">✕</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+function deleteSut(id) {
+  sutRecords = sutRecords.filter(r=>r.id!==id);
+  saveSutData(); renderSut(); showToast('Silindi');
+}
+
+// ===== TAKVİM =====
+function openTakvimModal() {
+  document.getElementById('tk_isim').value='';
+  document.getElementById('tk_tarih').value=today();
+  document.getElementById('tk_periyot').value='';
+  document.getElementById('tk_not').value='';
+  document.getElementById('takvimModal').classList.add('open');
+}
+function saveTakvim() {
+  const isim = document.getElementById('tk_isim').value.trim();
+  if (!isim) { showToast('Uygulama adı girin'); return; }
+  suruTakvimi.push({id:genId(), isim, tarih:document.getElementById('tk_tarih').value, periyot:document.getElementById('tk_periyot').value, not:document.getElementById('tk_not').value.trim()});
+  saveTakvimData(); closeModal('takvimModal'); showToast('Eklendi ✓'); renderTakvim();
+}
+function takvimAyDegistir(d) {
+  takvimAy = new Date(takvimAy.getFullYear(), takvimAy.getMonth()+d, 1);
+  renderTakvim();
+}
+function renderTakvim() {
+  const aylar = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  document.getElementById('takvimAyBaslik').textContent = `${aylar[takvimAy.getMonth()]} ${takvimAy.getFullYear()}`;
+
+  const ilk = new Date(takvimAy.getFullYear(), takvimAy.getMonth(), 1);
+  const sonGun = new Date(takvimAy.getFullYear(), takvimAy.getMonth()+1, 0).getDate();
+  let bosluk = ilk.getDay() === 0 ? 6 : ilk.getDay()-1;
+
+  // Olayları topla
+  const olaylar = {};
+  const ekleOlay = (tarih, renk) => { if (!olaylar[tarih]) olaylar[tarih]=[]; olaylar[tarih].push(renk); };
+
+  animals.forEach(a => {
+    (a.vaccines||[]).forEach(v => {
+      const nd = nextDate(v.tarih,v.periyot);
+      if (nd && nd.startsWith(takvimAy.toISOString().slice(0,7))) {
+        const days = daysUntil(nd);
+        ekleOlay(nd, days<0?'var(--danger)':days<=7?'var(--warn)':'var(--accent)');
+      }
+      if (v.tarih && v.tarih.startsWith(takvimAy.toISOString().slice(0,7))) ekleOlay(v.tarih,'#4a7fc1');
+    });
+    (a.tohumlama||[]).forEach(t => {
+      const tahmini = new Date(t.tarih); tahmini.setDate(tahmini.getDate()+280);
+      const dogumStr = tahmini.toISOString().slice(0,10);
+      if (dogumStr.startsWith(takvimAy.toISOString().slice(0,7))) ekleOlay(dogumStr,'var(--success)');
+    });
+  });
+  suruTakvimi.forEach(item => {
+    const nd = nextDate(item.tarih,item.periyot);
+    if (nd && nd.startsWith(takvimAy.toISOString().slice(0,7))) {
+      const days = daysUntil(nd);
+      ekleOlay(nd, days<0?'var(--danger)':days<=7?'var(--warn)':'var(--accent)');
+    }
+  });
+
+  const bugun = today();
+  let html = '';
+  for (let i=0;i<bosluk;i++) html += '<div></div>';
+  for (let g=1;g<=sonGun;g++) {
+    const ds = `${takvimAy.getFullYear()}-${String(takvimAy.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    const isBugun = ds===bugun;
+    const dots = (olaylar[ds]||[]).slice(0,3).map(c=>`<div style="width:5px;height:5px;border-radius:50%;background:${c};"></div>`).join('');
+    html += `<div style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;border:1px solid ${isBugun?'var(--accent)':'transparent'};background:${isBugun?'rgba(37,99,235,0.15)':'transparent'};">
+      <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:${isBugun?'var(--accent2)':'var(--text2)'};">${g}</div>
+      <div style="display:flex;gap:2px;margin-top:2px;">${dots}</div>
+    </div>`;
+  }
+  document.getElementById('takvimGrid').innerHTML = html;
+
+  // Periyodik liste
+  const liste = document.getElementById('takvimListe');
+  if (suruTakvimi.length === 0) {
+    liste.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div>Henüz periyodik uygulama eklenmemiş</div></div>';
+    return;
+  }
+  liste.innerHTML = suruTakvimi.map(item => {
+    const nd = nextDate(item.tarih,item.periyot);
+    const days = nd?daysUntil(nd):null;
+    const cls = days!==null?(days<0?'overdue':days<=7?'soon':''):'';
+    const label = days!==null?(days<0?`${Math.abs(days)} gün gecikti`:days===0?'Bugün!':`${days} gün kaldı`):'Periyot yok';
+    return `<div class="reminder-card ${cls}">
+      <div class="reminder-top">
+        <span class="reminder-animal">${item.isim}</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="reminder-days">${label}</span>
+          <button onclick="deleteTakvim('${item.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;">✕</button>
+        </div>
+      </div>
+      <div class="reminder-vaccine">Son: ${fmtDate(item.tarih)} • ${item.periyot?item.periyot+' günde bir':'—'}${item.not?' • '+item.not:''}</div>
+    </div>`;
+  }).join('');
+}
+function deleteTakvim(id) {
+  suruTakvimi = suruTakvimi.filter(x=>x.id!==id);
+  saveTakvimData(); renderTakvim();
+}
+
+// ===== RAPOR =====
+function raporFiltre(gun) {
+  const bit = today();
+  let bas;
+  if (gun === 0) { bas = '2000-01-01'; }
+  else { const d=new Date(); d.setDate(d.getDate()-gun); bas=d.toISOString().slice(0,10); }
+  document.getElementById('rapor_bas').value = bas;
+  document.getElementById('rapor_bit').value = bit;
+  renderRapor();
+}
+function renderRapor() {
+  const bas = document.getElementById('rapor_bas').value || '2000-01-01';
+  const bit = document.getElementById('rapor_bit').value || today();
+
+  const filtreli = sutRecords.filter(r=>r.tarih>=bas&&r.tarih<=bit);
+  const toplamSut = filtreli.reduce((s,r)=>s+r.litre*1,0);
+  const gunSayisi = filtreli.length > 0 ? [...new Set(filtreli.map(r=>r.tarih))].length : 1;
+  const ortSut = toplamSut / gunSayisi;
+
+  const aktif = a => !a.durum||a.durum==='hayatta';
+  const inekler = animals.filter(a=>a.tur==='inek'&&aktif(a));
+
+  // İnek başına süt
+  const inekSutMap = {};
+  filtreli.filter(r=>r.inekId).forEach(r => { inekSutMap[r.inekId]=(inekSutMap[r.inekId]||0)+r.litre*1; });
+  const inekSutList = inekler.map(a=>({a, sut:inekSutMap[a.id]||0})).sort((a,b)=>b.sut-a.sut);
+
+  document.getElementById('raporIcerik').innerHTML = `
+    <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-num" style="color:var(--sut);font-size:1.5rem;">${toplamSut.toFixed(1)}</div><div class="stat-label">Toplam Süt (L)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--accent2);font-size:1.5rem;">${ortSut.toFixed(1)}</div><div class="stat-label">Günlük Ort (L)</div></div>
+    </div>
+
+    <div class="sec-title">İnek Bazlı Süt</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;">
+      ${inekSutList.length===0?'<div style="color:var(--text2);font-size:0.85rem;">Veri yok</div>':
+        inekSutList.map(({a,sut})=>`
+        <div class="detail-row">
+          <span style="font-weight:600;">${a.isim||a.kupe}</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--sut);">${sut.toFixed(1)} L</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="sec-title">Sürü Durumu</div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;">
+      <div class="detail-row"><span class="detail-key">Toplam Hayvan</span><span class="detail-val">${animals.filter(aktif).length}</span></div>
+      <div class="detail-row"><span class="detail-key">İnek</span><span class="detail-val">${animals.filter(a=>a.tur==='inek'&&aktif(a)).length}</span></div>
+      <div class="detail-row"><span class="detail-key">Düve</span><span class="detail-val">${animals.filter(a=>a.tur==='duve'&&aktif(a)).length}</span></div>
+      <div class="detail-row"><span class="detail-key">Buzağı</span><span class="detail-val">${animals.filter(a=>a.tur==='buzagi'&&aktif(a)).length}</span></div>
+      <div class="detail-row"><span class="detail-key">Gebe İnek</span><span class="detail-val">${animals.filter(a=>a.tur==='inek'&&aktif(a)&&a.tohumlama&&a.tohumlama.length>0).length}</span></div>
+    </div>
+  `;
+}
+
+// ===== AYARLAR =====
+function renderAyarlar() {
+  document.getElementById('ayarlarToplam').textContent = animals.length;
+  document.getElementById('ayarlarSut').textContent = sutRecords.length + ' kayıt';
+  if (!document.getElementById('rapor_bas').value) raporFiltre(30);
+}
+
+function disaAktar() {
+  // CSV export
+  const rows = [['Küpe No','İsim','Tür','Irk','Doğum Tarihi','Laktasyon No','Son Buzağılama','Durum']];
+  animals.forEach(a => rows.push([a.kupe,a.isim||'',a.tur,a.irk||'',a.dogumTarihi||'',a.laktasyon||'',a.buzagilama||'',a.durum||'hayatta']));
+  const csv = rows.map(r=>r.map(c=>'"'+c+'"').join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='dr-inekci-hayvanlar.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('İndirildi ✓');
+}
+
+function tumVerileriSil() {
+  if (!confirm('TÜM veri silinecek! Emin misin?')) return;
+  if (!confirm('Son kez: Bu işlem geri alınamaz!')) return;
+  animals = []; sutRecords = []; suruTakvimi = [];
+  save(); saveSutData(); saveTakvimData();
+  showToast('Tüm veriler silindi');
+  showPage('dashboard');
+}
+
+// ===== MODAL YARDIMCI =====
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target===m) m.classList.remove('open'); });
+});
+
+// Enter ile giriş
+document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key==='Enter') emailGiris(); });
+
+// Başlangıç
+window.addEventListener('load', () => {
+  // Firebase hazır değilse bekle
+  setTimeout(() => {
+    if (!window._firebaseReady) {
+      document.getElementById('loginError').textContent = 'Firebase yüklenemedi. İnternet bağlantını kontrol et.';
+    }
+  }, 5000);
+  raporFiltre(30);
+});
+</script>
+</body>
+</html>
