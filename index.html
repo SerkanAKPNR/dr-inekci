@@ -149,7 +149,6 @@ canvas { max-width: 100%; }
   <button class="nav-btn" onclick="showPage('reminders')">Hatırlatıcılar</button>
   <button class="nav-btn" onclick="showPage('suru')">Sürü</button>
   <button class="nav-btn" onclick="showPage('gecmis')">Geçmiş</button>
-  <button class="nav-btn" onclick="showPage('ayarlar')">⚙️</button>
 </nav>
 
 <!-- DASHBOARD -->
@@ -611,134 +610,6 @@ canvas { max-width: 100%; }
 <script>
 // ===== VERİ =====
 let animals = (() => { try { return JSON.parse(localStorage.getItem('sagmal_animals') || '[]') || []; } catch(e) { localStorage.removeItem('sagmal_animals'); return []; } })();
-
-// TEST VERİSİ - sadece liste boşsa yükle
-if (animals.length === 0) {
-  const isimler = ['Sarıkız','Benekli','Karabaş','Dolunay','Yıldız','Papatya','Gülpembe','Akgül','Topaç','Semaver','Nazlı','Beyaz','Çiçek','Alaca','Boncuk','Maviş','Pembe','Turna','Leyla','Şeker','Kınalı','Duman','Fırtına','Gümüş','Rüzgar','Tarçın','Bahar','Menekşe','Zerrin','Yasemin','Sümbül','Lale','Gonca','Nergis','Hanım'];
-  const irklar = ['Holstein','Holstein','Holstein','Simental','Simental','Montofon','Jersey','Melez','Holstein','Simental','Holstein','Holstein','Melez','Simental','Holstein','Jersey','Holstein','Melez','Holstein','Simental','Holstein','Montofon','Holstein','Simental','Holstein','Jersey','Holstein','Holstein','Simental','Holstein','Melez','Holstein','Simental','Holstein','Holstein'];
-  const repros = ['fresh','fresh','fresh','fresh','fresh','fresh','fresh','fresh','fresh','fresh','tohumlu','tohumlu','tohumlu','tohumlu','tohumlu','tohumlu','tohumlu','tohumlu','gebe','gebe','gebe','gebe','gebe','gebe','gebe','gebe','acik','acik','acik','acik','acik','diger','diger','diger','diger'];
-
-  function rndDate(yilOnce, yilSonra) {
-    const ms = new Date('2025-03-29').getTime();
-    const min = ms - yilOnce*365*24*3600000;
-    const max = ms - yilSonra*365*24*3600000;
-    const d = new Date(min + Math.random()*(max-min));
-    return d.toISOString().slice(0,10);
-  }
-
-  function addDays(dateStr, gun) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + gun);
-    return d.toISOString().slice(0,10);
-  }
-
-  const tohumlamaBogalari = [
-    {ad:'Tornado', no:'BK-11234'},
-    {ad:'Sultan', no:'BK-22345'},
-    {ad:'Kahraman', no:'BK-33456'},
-    {ad:'Atlas', no:'BK-44567'},
-    {ad:'Fırtına', no:'BK-55678'},
-  ];
-
-  const asiIsimler = ['Şap','Şap','Brucella','Vitamin B12','Selenyum','IBR','BVD'];
-
-  repros.forEach((repro, i) => {
-    const dogum = rndDate(7, 3); // 3-7 yıl önce doğmuş
-    let sonDogum = '';
-    let tohumlamalar = [];
-    let vaccines = [];
-    let milkRecords = [];
-    let weights = [];
-
-    // Son doğum tarihi
-    if (repro === 'fresh') {
-      sonDogum = rndDate(0.15, 0.02); // 1-8 hafta önce
-    } else if (repro === 'tohumlu') {
-      sonDogum = rndDate(0.6, 0.2); // 2-8 ay önce
-      const tohTarih = rndDate(0.3, 0.05);
-      const boga = tohumlamaBogalari[i % tohumlamaBogalari.length];
-      tohumlamalar = [{
-        tarih: tohTarih,
-        bogaAd: boga.ad,
-        bogaNo: boga.no,
-        beklenenDogum: addDays(tohTarih, 280),
-        sonuc: 'bekliyor',
-        not: ''
-      }];
-    } else if (repro === 'gebe') {
-      sonDogum = rndDate(1.2, 0.7);
-      const tohTarih = rndDate(0.65, 0.2);
-      const boga = tohumlamaBogalari[(i+2) % tohumlamaBogalari.length];
-      tohumlamalar = [{
-        tarih: tohTarih,
-        bogaAd: boga.ad,
-        bogaNo: boga.no,
-        beklenenDogum: addDays(tohTarih, 280),
-        sonuc: 'gebe',
-        not: ''
-      }];
-    } else if (repro === 'acik') {
-      sonDogum = rndDate(0.8, 0.3);
-    }
-
-    // Aşı kayıtları
-    const asiSayisi = 1 + Math.floor(Math.random()*3);
-    for (let k=0; k<asiSayisi; k++) {
-      const asiTarih = rndDate(0.5+k*0.3, 0.1+k*0.3);
-      vaccines.push({
-        isim: asiIsimler[Math.floor(Math.random()*asiIsimler.length)],
-        tarih: asiTarih,
-        periyot: [180,365,365,90,180,365,365][Math.floor(Math.random()*7)].toString(),
-        not: ''
-      });
-    }
-
-    // Süt kayıtları (son 2 hafta)
-    if (repro !== 'diger') {
-      for (let g=13; g>=0; g--) {
-        const d = new Date('2026-03-29');
-        d.setDate(d.getDate()-g);
-        const base = repro==='fresh' ? 28+Math.random()*12 : repro==='gebe' ? 15+Math.random()*8 : 20+Math.random()*10;
-        milkRecords.push({
-          miktar: Math.round(base*10)/10,
-          tarih: d.toISOString().slice(0,10),
-          not: ''
-        });
-      }
-    }
-
-    // Ağırlık
-    const bazAgirlik = irklar[i]==='Holstein' ? 580 : irklar[i]==='Simental' ? 620 : irklar[i]==='Jersey' ? 420 : 520;
-    weights = [
-      {agirlik: bazAgirlik - 20 + Math.floor(Math.random()*40), tarih: rndDate(0.5, 0.4)},
-      {agirlik: bazAgirlik - 10 + Math.floor(Math.random()*30), tarih: rndDate(0.2, 0.1)},
-      {agirlik: bazAgirlik + Math.floor(Math.random()*20), tarih: '2026-03-15'},
-    ];
-
-    const kupeNo = 'TR15' + String(29200000 + i*1337 + Math.floor(Math.random()*999)).padStart(10,'0');
-
-    animals.push({
-      id: (Date.now() + i).toString(36) + Math.random().toString(36).slice(2,6),
-      createdAt: Date.now() + i,
-      kupe: kupeNo,
-      isletme: '12345',
-      isim: isimler[i],
-      irk: irklar[i],
-      dogum,
-      sonDogum,
-      repro,
-      not: '',
-      durum: 'hayatta',
-      vaccines,
-      weights,
-      milkRecords,
-      tohumlamalar
-    });
-  });
-
-  localStorage.setItem('sagmal_animals', JSON.stringify(animals));
-}
-
 let currentAnimalId = null;
 let currentFilter = 'hepsi';
 let currentPage = 'dashboard';
@@ -787,12 +658,13 @@ const REPRO_LABEL = { fresh: 'Fresh', tohumlu: 'Tohumlu', gebe: 'Gebe', acik: 'A
 const REPRO_TAG = { fresh: 'tag-fresh', tohumlu: 'tag-tohumlu', gebe: 'tag-gebe', acik: 'tag-acik', diger: 'tag-diger' };
 
 // ===== SAYFALAR =====
+const SWIPE_PAGES = ['dashboard','animals','reminders','suru','gecmis'];
+
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
-  const pages = ['dashboard','animals','reminders','suru','gecmis','ayarlar'];
-  const idx = pages.indexOf(page);
+  const idx = SWIPE_PAGES.indexOf(page);
   if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
   document.getElementById('fabBtn').style.display = ['detail','gecmis','ayarlar','suru'].includes(page) ? 'none' : 'flex';
   currentPage = page;
@@ -804,6 +676,27 @@ function showPage(page) {
   if (page === 'ayarlar') renderAyarlar();
   if (page === 'detail') renderDetail();
 }
+
+// ===== SWIPE =====
+(function() {
+  let startX = 0, startY = 0, startT = 0;
+  document.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+  }, {passive: true});
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    const dt = Date.now() - startT;
+    if (Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.8 || dt > 400) return;
+    if (['dashboard','animals','reminders','suru','gecmis'].includes(currentPage)) {
+      const idx = SWIPE_PAGES.indexOf(currentPage);
+      if (dx < 0 && idx < SWIPE_PAGES.length - 1) showPage(SWIPE_PAGES[idx + 1]);
+      if (dx > 0 && idx > 0) showPage(SWIPE_PAGES[idx - 1]);
+    }
+  }, {passive: true});
+})();
 
 function filterAndShow(repro) {
   currentFilter = repro;
@@ -1627,8 +1520,32 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ===== TEST SÜT VERİSİ =====
+function sutVerisiEkle() {
+  if (!animals.length) return;
+  let degisti = false;
+  animals.forEach(a => {
+    if (!a.durum || a.durum === 'hayatta') {
+      if (!a.milkRecords || a.milkRecords.length === 0) {
+        a.milkRecords = [];
+        const base = a.repro==='fresh' ? 28 : a.repro==='gebe' ? 16 : 22;
+        for (let g = 29; g >= 0; g--) {
+          const d = new Date('2026-03-29');
+          d.setDate(d.getDate() - g);
+          const trend = a.repro==='fresh' ? -g*0.1 : a.repro==='gebe' ? -g*0.05 : 0;
+          const miktar = Math.max(5, Math.round((base + trend + (Math.random()*4-2)) * 10) / 10);
+          a.milkRecords.push({ miktar, tarih: d.toISOString().slice(0,10), not: '' });
+        }
+        degisti = true;
+      }
+    }
+  });
+  if (degisti) save();
+}
+
 // ===== INIT =====
 currentAnimalId = null;
+sutVerisiEkle();
 showPage('dashboard');
 </script>
 
