@@ -879,21 +879,38 @@ function renderDetail() {
 
   // Süt verimi
   const milkRecords = (a.milkRecords||[]).slice(-30);
+  const sonSutVal = milkRecords.length ? milkRecords[milkRecords.length-1].miktar : null;
+  const ortSut = milkRecords.length ? Math.round(milkRecords.reduce((s,m)=>s+m.miktar,0)/milkRecords.length*10)/10 : null;
   html += `<div class="detail-card">
     <div class="detail-card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>🥛 Süt Verimi</span>
-      <button class="btn btn-sm btn-outline" onclick="openMilkModal('${a.id}')">+ Ekle</button>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-outline" onclick="toggleMilkDetay('${a.id}')">📋 Veriler</button>
+        <button class="btn btn-sm btn-outline" onclick="openMilkModal('${a.id}')">+ Ekle</button>
+      </div>
     </div>
     ${milkRecords.length === 0 ? '<div style="color:var(--text2);font-size:0.85rem;">Kayıt yok</div>' : `
-      <div style="margin-bottom:8px;">
-        <canvas id="milkChart" height="120"></canvas>
+      <div style="display:flex;gap:16px;margin-bottom:10px;">
+        <div style="text-align:center;">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--accent);">${sonSutVal} L</div>
+          <div style="font-size:0.65rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">SON KAYIT</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--tohumlu);">${ortSut} L</div>
+          <div style="font-size:0.65rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${milkRecords.length}G ORT.</div>
+        </div>
       </div>
-      ${milkRecords.slice(-5).reverse().map(m => `
-        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
-          <span style="font-weight:600;">${m.miktar} L</span>
-          <span style="color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${m.tarih}</span>
-          <button onclick="deleteMilk('${a.id}','${m.tarih}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;">sil</button>
-        </div>`).join('')}
+      <div style="margin-bottom:4px;">
+        <canvas id="milkChart" height="100"></canvas>
+      </div>
+      <div id="milkDetay_${a.id}" style="display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+        ${milkRecords.slice().reverse().map(m => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
+            <span style="font-weight:600;color:var(--accent);">${m.miktar} L</span>
+            <span style="color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:0.75rem;">${m.tarih}</span>
+            <button onclick="deleteMilk('${a.id}','${m.tarih}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;">sil</button>
+          </div>`).join('')}
+      </div>
     `}
   </div>`;
 
@@ -1334,6 +1351,13 @@ function deleteVaccine(animalId, idx) {
 function deleteWeight(animalId, tarih) {
   const a = animals.find(x => x.id === animalId);
   if (!a) return; a.weights = a.weights.filter(w => w.tarih!==tarih); save(); renderDetail(); showToast('Kayıt silindi');
+}
+
+function toggleMilkDetay(id) {
+  const el = document.getElementById('milkDetay_' + id);
+  if (!el) return;
+  const acik = el.style.display !== 'none';
+  el.style.display = acik ? 'none' : 'block';
 }
 
 function deleteMilk(animalId, tarih) {
