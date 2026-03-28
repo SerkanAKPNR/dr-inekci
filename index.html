@@ -8,19 +8,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
-  --bg: #0a0f12;
-  --surface: #111920;
-  --surface2: #192330;
-  --border: #1e3040;
-  --accent: #3cb8c8;
-  --accent2: #6adde0;
-  --text: #d0eaf0;
-  --text2: #6a8a98;
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #e8eff5;
+  --border: #c8d8e8;
+  --accent: #2a8fa8;
+  --accent2: #1db8c8;
+  --text: #1a2e3a;
+  --text2: #5a7a8a;
   --danger: #e05a3a;
-  --warn: #e0a93a;
-  --fresh: #4caf7d;
-  --tohumlu: #5b8dd9;
-  --gebe: #d97fb8;
+  --warn: #d4920a;
+  --fresh: #1f9e60;
+  --tohumlu: #3a72c8;
+  --gebe: #c044a0;
   --acik: #e05a3a;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -120,15 +120,15 @@ canvas { max-width: 100%; }
 <body>
 
 <!-- GİRİŞ EKRANI -->
-<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:#0a0f12;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
+<div id="loginScreen" style="display:flex;position:fixed;inset:0;background:#f0f4f8;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
   <div style="font-size:3rem;margin-bottom:16px;">🐄</div>
-  <h1 style="font-size:1.5rem;font-weight:700;color:#6adde0;margin-bottom:8px;">Sağmal İnek</h1>
-  <p style="color:#6a8a98;font-size:0.85rem;margin-bottom:24px;text-align:center;">Verilerinize her cihazdan erişmek için giriş yapın</p>
+  <h1 style="font-size:1.5rem;font-weight:700;color:#2a8fa8;margin-bottom:8px;">Sağmal İnek</h1>
+  <p style="color:#5a7a8a;font-size:0.85rem;margin-bottom:24px;text-align:center;">Verilerinize her cihazdan erişmek için giriş yapın</p>
   <div style="width:100%;max-width:300px;">
-    <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:#111920;border:1px solid #1e3040;border-radius:8px;padding:12px;color:#d0eaf0;font-size:1rem;margin-bottom:10px;outline:none;">
-    <input id="loginPassword" type="password" placeholder="Şifre" style="width:100%;background:#111920;border:1px solid #1e3040;border-radius:8px;padding:12px;color:#d0eaf0;font-size:1rem;margin-bottom:10px;outline:none;">
-    <button onclick="emailGiris()" style="background:#3cb8c8;color:#0a0f12;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">Giriş Yap</button>
-    <button onclick="emailKayit()" style="background:none;color:#3cb8c8;border:1px solid #3cb8c8;border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;">İlk kez? Kayıt Ol</button>
+    <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
+    <input id="loginPassword" type="password" placeholder="Şifre" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
+    <button onclick="emailGiris()" style="background:#2a8fa8;color:#ffffff;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">Giriş Yap</button>
+    <button onclick="emailKayit()" style="background:none;color:#2a8fa8;border:1px solid #2a8fa8;border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;">İlk kez? Kayıt Ol</button>
   </div>
   <div id="loginError" style="color:#e05a3a;font-size:0.82rem;margin-top:14px;text-align:center;max-width:300px;"></div>
 </div>
@@ -264,9 +264,9 @@ canvas { max-width: 100%; }
       <div id="detailSub" style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;"></div>
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;align-items:center;">
-      <button onclick="navigateAnimal(-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;font-size:1.2rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;" id="prevBtn">⬆</button>
+      <button onclick="navigateAnimal(-1)" style="background:var(--accent);border:none;border-radius:10px;width:38px;height:38px;font-size:1.3rem;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;" id="prevBtn">▲</button>
       <div id="detailNavPos" style="font-size:0.62rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-align:center;"></div>
-      <button onclick="navigateAnimal(1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;width:38px;height:38px;font-size:1.2rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;" id="nextBtn">⬇</button>
+      <button onclick="navigateAnimal(1)" style="background:var(--accent);border:none;border-radius:10px;width:38px;height:38px;font-size:1.3rem;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;" id="nextBtn">▼</button>
     </div>
   </div>
   <div class="detail-sections" id="detailSections"></div>
@@ -370,9 +370,9 @@ canvas { max-width: 100%; }
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div class="modal-title" style="margin-bottom:0;">Hayvanı Düzenle</div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <button onclick="editNavigate(-1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:1rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;">⬆</button>
+        <button onclick="editNavigate(-1)" style="background:var(--accent);border:none;border-radius:8px;width:32px;height:32px;font-size:1.1rem;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">▲</button>
         <span id="editNavPos" style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text2);min-width:28px;text-align:center;"></span>
-        <button onclick="editNavigate(1)" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:1rem;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;">⬇</button>
+        <button onclick="editNavigate(1)" style="background:var(--accent);border:none;border-radius:8px;width:32px;height:32px;font-size:1.1rem;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">▼</button>
       </div>
     </div>
     <div class="form-row">
@@ -974,7 +974,7 @@ function drawMilkChart(records) {
   const max = Math.max(...vals) * 1.1;
   const min = Math.min(...vals) * 0.9;
 
-  ctx.strokeStyle = '#3cb8c8';
+  ctx.strokeStyle = '#2a8fa8';
   ctx.lineWidth = 2;
   ctx.beginPath();
   sorted.forEach((r, i) => {
@@ -985,7 +985,7 @@ function drawMilkChart(records) {
   ctx.stroke();
 
   // Noktalar
-  ctx.fillStyle = '#6adde0';
+  ctx.fillStyle = '#1db8c8';
   sorted.forEach((r, i) => {
     const x = (i / (sorted.length-1)) * (w-20) + 10;
     const y = 100 - ((parseFloat(r.miktar)-min)/(max-min)) * 80;
@@ -995,7 +995,7 @@ function drawMilkChart(records) {
   });
 
   // Son değer
-  ctx.fillStyle = '#d0eaf0';
+  ctx.fillStyle = '#1a2e3a';
   ctx.font = '11px JetBrains Mono';
   ctx.fillText(vals[vals.length-1] + ' L', w-45, 15);
 }
