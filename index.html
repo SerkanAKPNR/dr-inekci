@@ -155,6 +155,10 @@ canvas { max-width: 100%; }
 <!-- DASHBOARD -->
 <div class="page active" id="page-dashboard">
   <div class="stats" id="statsGrid"></div>
+  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;">
+    <input type="date" id="gunlukTarih" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Crimson Pro',serif;font-size:0.9rem;outline:none;">
+    <button class="btn" onclick="gunlukListeExcel()" style="white-space:nowrap;padding:9px 16px;">📋 Günlük Liste</button>
+  </div>
   <div id="dashReminders"></div>
   <div id="dashRepro"></div>
 </div>
@@ -759,6 +763,9 @@ function filterAndShow(repro) {
 
 // ===== DASHBOARD =====
 function renderDashboard() {
+  if (!document.getElementById('gunlukTarih').value) {
+    document.getElementById('gunlukTarih').value = today();
+  }
   const aktif = animals.filter(a => !a.durum || a.durum === 'hayatta');
   const fresh = aktif.filter(a => a.repro === 'fresh').length;
   const tohumlu = aktif.filter(a => a.repro === 'tohumlu').length;
@@ -1759,6 +1766,164 @@ async function importFromExcel(event) {
     showToast(`${added} hayvan eklendi`);
   } catch(e) { if (result) result.innerHTML=`<span style="color:var(--danger)">⚠️ Hata: ${e.message}</span>`; }
   event.target.value='';
+}
+
+function gunlukListeExcel() {
+  if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
+  const tarih = document.getElementById('gunlukTarih').value || today();
+  const wb = XLSX.utils.book_new();
+
+  // ── Yardımcı ──
+  function baseStyle() { return { font: { name: 'Arial', sz: 10 }, alignment: { vertical: 'center' } }; }
+
+  function ekleSheet(wb, sheetAdi, basliklar, satirlar, baslikRenk) {
+    const ws = {};
+    const range = { s: { r: 0, c: 0 }, e: { r: satirlar.length, c: basliklar.length - 1 } };
+
+    // Başlık satırı
+    basliklar.forEach((b, c) => {
+      const addr = XLSX.utils.encode_cell({ r: 0, c });
+      ws[addr] = {
+        v: b, t: 's',
+        s: { font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
+             fill: { fgColor: { rgb: baslikRenk } },
+             alignment: { horizontal: 'center', vertical: 'center' },
+             border: { bottom: { style: 'thin', color: { rgb: 'CCCCCC' } } } }
+      };
+    });
+
+    // Veri satırları
+    satirlar.forEach((satir, r) => {
+      const rowIdx = r + 1;
+      const bg = r % 2 === 0 ? 'FFFFFF' : 'F5F8FA';
+      satir.forEach((val, c) => {
+        const addr = XLSX.utils.encode_cell({ r: rowIdx, c });
+        ws[addr] = {
+          v: val === null || val === undefined ? '' : val,
+          t: 's',
+          s: { font: { name: 'Arial', sz: 10 },
+               fill: { fgColor: { rgb: bg } },
+               alignment: { horizontal: c === 0 ? 'left' : 'center', vertical: 'center' },
+               border: { bottom: { style: 'thin', color: { rgb: 'EEEEEE' } } } }
+        };
+      });
+    });
+
+    ws['!ref'] = XLSX.utils.encode_range(range);
+    ws['!cols'] = basliklar.map((_, i) => ({ wch: i === 0 ? 20 : i === 1 ? 18 : 22 }));
+    ws['!rows'] = [{ hpt: 20 }, ...satirlar.map(() => ({ hpt: 18 }))];
+    XLSX.utils.book_append_sheet(wb, ws, sheetAdi);
+  }
+
+  const aktif = animals.filter(a => !a.durum || a.durum === 'hayatta');
+
+  // ── 1. GENEL ÖZET ──
+  const genelSatirlar = [];
+  aktif.forEach(a => {
+    (a.vaccines || []).forEach(v => {
+      const nd = nextVaccineDate(v);
+      if (nd === tarih || (!nd && v.tarih === tarih)) {
+        const tip = isPG(v.isim) ? 'Hormon/PG' : 'Aşı/İlaç';
+        genelSatirlar.push([a.kupe || '—', a.isim || '—', tip, v.isim, v.not || '—', '']);
+      }
+      // Gecikmiş (tarihten önceki)
+      if (nd && nd < tarih) {
+        const gecGun = Math.round((new Date(tarih) - new Date(nd)) / 86400000);
+        const tip = isPG(v.isim) ? 'Hormon/PG' : 'Aşı/İlaç';
+        genelSatirlar.push([a.kupe || '—', a.isim || '—', tip + ' ⚠️', v.isim, v.not || '—', `${gecGun}g gecikti`]);
+      }
+    });
+    (a.tohumlamalar || []).forEach(t => {
+      if (t.tarih === tarih && t.sonuc === 'bekliyor') {
+        genelSatirlar.push([a.kupe || '—', a.isim || '—', 'Tohumlama', 'TAI', t.not || '—', '']);
+      }
+    });
+  });
+  ekleSheet(wb, '📋 Genel Özet',
+    ['Küpe No', 'İsim', 'İşlem Tipi', 'Uygulama', 'Not', 'Durum'],
+    genelSatirlar.length ? genelSatirlar : [['—', '—', '—', 'Bu tarihte işlem yok', '—', '—']],
+    '2a8fa8'
+  );
+
+  // ── 2. AŞI / İLAÇ ──
+  const asiSatirlar = [];
+  aktif.forEach(a => {
+    (a.vaccines || []).filter(v => !isPG(v.isim)).forEach(v => {
+      const nd = nextVaccineDate(v);
+      const gecikme = nd && nd < tarih ? Math.round((new Date(tarih) - new Date(nd)) / 86400000) + 'g gecikti' : '';
+      if (nd === tarih || gecikme || v.tarih === tarih) {
+        asiSatirlar.push([
+          a.kupe || '—',
+          a.isim || '—',
+          REPRO_LABEL[a.repro || 'diger'] || '—',
+          v.isim,
+          nd || v.tarih,
+          v.periyot ? v.periyot + ' gün' : '—',
+          v.not || '—',
+          gecikme || '✓'
+        ]);
+      }
+    });
+  });
+  ekleSheet(wb, '💉 Aşı - İlaç',
+    ['Küpe No', 'İsim', 'Repro', 'Aşı/İlaç', 'Tarih', 'Periyot', 'Not', 'Durum'],
+    asiSatirlar.length ? asiSatirlar : [['—', '—', '—', 'Bu tarihte aşı/ilaç yok', '—', '—', '—', '—']],
+    '3a72c8'
+  );
+
+  // ── 3. HORMON ──
+  const hormonSatirlar = [];
+  aktif.forEach(a => {
+    (a.vaccines || []).filter(v => isPG(v.isim) || /gnrh|hormon|cidr|progesteron/i.test(v.isim)).forEach(v => {
+      const nd = nextVaccineDate(v);
+      const gecikme = nd && nd < tarih ? Math.round((new Date(tarih) - new Date(nd)) / 86400000) + 'g gecikti' : '';
+      if (nd === tarih || gecikme || v.tarih === tarih) {
+        hormonSatirlar.push([
+          a.kupe || '—',
+          a.isim || '—',
+          REPRO_LABEL[a.repro || 'diger'] || '—',
+          v.isim,
+          nd || v.tarih,
+          v.not || '—',
+          gecikme || '✓'
+        ]);
+      }
+    });
+  });
+  ekleSheet(wb, '🔬 Hormon',
+    ['Küpe No', 'İsim', 'Repro', 'Hormon', 'Tarih', 'Not', 'Durum'],
+    hormonSatirlar.length ? hormonSatirlar : [['—', '—', '—', 'Bu tarihte hormon uygulaması yok', '—', '—', '—']],
+    'c044a0'
+  );
+
+  // ── 4. TOHUMLAMA ──
+  const tohSatirlar = [];
+  aktif.forEach(a => {
+    (a.tohumlamalar || []).forEach(t => {
+      if (t.tarih === tarih) {
+        tohSatirlar.push([
+          a.kupe || '—',
+          a.isim || '—',
+          REPRO_LABEL[a.repro || 'diger'] || '—',
+          a.sonDogum || '—',
+          calcSGS(a.sonDogum) !== null ? calcSGS(a.sonDogum) + ' gün' : '—',
+          t.bogaAd || '—',
+          t.bogaNo || '—',
+          t.beklenenDogum || '—',
+          t.not || '—'
+        ]);
+      }
+    });
+  });
+  ekleSheet(wb, '🐄 Tohumlama',
+    ['Küpe No', 'İsim', 'Repro', 'Son Doğum', 'SGS', 'Boğa', 'Boğa No', 'Beklenen Doğum', 'Not'],
+    tohSatirlar.length ? tohSatirlar : [['—', '—', '—', 'Bu tarihte tohumlama yok', '—', '—', '—', '—', '—']],
+    '1f9e60'
+  );
+
+  const dosyaAdi = `is_listesi_${tarih}.xlsx`;
+  XLSX.writeFile(wb, dosyaAdi);
+  showToast(`✓ ${dosyaAdi} indirildi!`);
 }
 
 function disaAktar() {
