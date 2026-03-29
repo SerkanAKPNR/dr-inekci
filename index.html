@@ -123,12 +123,17 @@ canvas { max-width: 100%; }
 <div id="loginScreen" style="display:flex;position:fixed;inset:0;background:#f0f4f8;z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:32px;">
   <div style="font-size:3rem;margin-bottom:16px;">🐄</div>
   <h1 style="font-size:1.5rem;font-weight:700;color:#2a8fa8;margin-bottom:8px;">Sağmal İnek</h1>
-  <p style="color:#5a7a8a;font-size:0.85rem;margin-bottom:24px;text-align:center;">Verilerinize her cihazdan erişmek için giriş yapın</p>
+  <p style="color:#5a7a8a;font-size:0.85rem;margin-bottom:24px;text-align:center;">Giriş yapın veya misafir olarak devam edin</p>
   <div style="width:100%;max-width:300px;">
     <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
     <input id="loginPassword" type="password" placeholder="Şifre" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
     <button onclick="emailGiris()" style="background:#2a8fa8;color:#ffffff;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">Giriş Yap</button>
-    <button onclick="emailKayit()" style="background:none;color:#2a8fa8;border:1px solid #2a8fa8;border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;">İlk kez? Kayıt Ol</button>
+    <div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+      <div style="flex:1;height:1px;background:#c8d8e8;"></div>
+      <span style="color:#5a7a8a;font-size:0.78rem;">veya</span>
+      <div style="flex:1;height:1px;background:#c8d8e8;"></div>
+    </div>
+    <button onclick="misafirGiris()" style="background:none;color:#5a7a8a;border:1px solid #c8d8e8;border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;">👁️ Misafir Olarak Gir</button>
   </div>
   <div id="loginError" style="color:#e05a3a;font-size:0.82rem;margin-top:14px;text-align:center;max-width:300px;"></div>
 </div>
@@ -140,7 +145,10 @@ canvas { max-width: 100%; }
     <h1>🐄 Sağmal İnek</h1>
     <div class="sub" id="headerSub">Yükleniyor...</div>
   </div>
-  <button onclick="showPage('ayarlar')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:0.8rem;cursor:pointer;">⚙️</button>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div id="misafirBadge" style="display:none;background:rgba(224,169,58,0.15);color:var(--warn);border:1px solid var(--warn);border-radius:8px;padding:4px 10px;font-size:0.72rem;font-family:'JetBrains Mono',monospace;">👁️ MİSAFİR</div>
+    <button id="ayarlarBtn" onclick="showPage('ayarlar')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:0.8rem;cursor:pointer;">⚙️</button>
+  </div>
 </div>
 
 <nav class="nav">
@@ -655,6 +663,7 @@ canvas { max-width: 100%; }
 <script>
 // ===== VERİ =====
 let animals = (() => { try { return JSON.parse(localStorage.getItem('sagmal_animals') || '[]') || []; } catch(e) { localStorage.removeItem('sagmal_animals'); return []; } })();
+let misafirMod = false;
 let currentAnimalId = null;
 let currentFilter = 'hepsi';
 let currentPage = 'dashboard';
@@ -1249,6 +1258,7 @@ function senkronHepsiniSec(sec) {
 }
 
 function senkronBaslat() {
+  if (misafirKontrol()) return;
   const protokolKey = document.getElementById('senkron_protokol').value;
   const baslangic = document.getElementById('senkron_baslangic').value;
   if (!baslangic) { showToast('Başlangıç tarihi gerekli!'); return; }
@@ -1365,6 +1375,7 @@ function renderSuruList() {
 function suruHepsiniSec(sec) { document.querySelectorAll('.suru_check').forEach(cb => cb.checked = sec); }
 
 function suruUygula() {
+  if (misafirKontrol()) return;
   const isim = document.getElementById('suru_isim').value.trim();
   const tarih = document.getElementById('suru_tarih').value;
   if (!isim || !tarih) { showToast('Aşı adı ve tarih gerekli!'); return; }
@@ -1508,6 +1519,7 @@ function showPhotoMenu() { document.getElementById('photoMenu').classList.add('o
 
 // ===== KAYDET =====
 function saveAnimal() {
+  if (misafirKontrol()) return;
   const kupe = document.getElementById('f_kupe').value.trim();
   if (!kupe) { showToast('Küpe no gerekli!'); return; }
   const formatted = formatKupe(kupe);
@@ -1533,6 +1545,7 @@ function saveAnimal() {
 }
 
 function saveEdit(silent=false) {
+  if (!silent && misafirKontrol()) return;
   const a = animals.find(x => x.id === currentAnimalId);
   if (!a) return;
   a.kupe = formatKupe(document.getElementById('e_kupe').value.trim());
@@ -1551,11 +1564,55 @@ function saveEdit(silent=false) {
   if (!silent) { closeModal('editModal'); showToast('Kaydedildi ✓'); renderDetail(); renderDashboard(); }
 }
 
+// ===== MİSAFİR MOD =====
+function misafirGiris() {
+  misafirMod = true;
+  window.misafirMod = true;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('headerSub').textContent = 'Misafir — Sadece görüntüleme';
+  document.getElementById('misafirBadge').style.display = 'block';
+  document.getElementById('ayarlarBtn').style.display = 'none';
+  uiKilitle();
+  sutVerisiEkle();
+  showPage('dashboard');
+  // Firebase'den sahibin verisini çek
+  if (window.misafirFirebaseOku) window.misafirFirebaseOku();
+}
+
+function uiKilitle() {
+  // FAB gizle
+  document.getElementById('fabBtn').style.display = 'none';
+  // CSS ile yazma butonlarını gizle
+  const style = document.createElement('style');
+  style.id = 'misafirStyle';
+  style.textContent = `
+    .misafir-gizle { display: none !important; }
+    button.btn:not(.btn-outline)[onclick*="Modal"],
+    button.btn:not(.btn-outline)[onclick*="save"],
+    button.btn:not(.btn-outline)[onclick*="Sil"],
+    button.btn:not(.btn-outline)[onclick*="sil"],
+    button.btn:not(.btn-outline)[onclick*="Uygula"],
+    button.btn:not(.btn-outline)[onclick*="Basla"],
+    button.btn:not(.btn-outline)[onclick*="Aktar"] { pointer-events: none; opacity: 0.3; }
+  `;
+  document.head.appendChild(style);
+}
+
+function misafirKontrol(mesaj) {
+  if (misafirMod) {
+    showToast('👁️ Misafir modunda değişiklik yapılamaz!');
+    return true;
+  }
+  return false;
+}
+
 function isPG(isim) {
   return /pg|pgf|prostaglandin|lutalyse|estrumate|dinoprost|cloprostenol/i.test(isim);
 }
 
 function saveVaccine() {
+  if (misafirKontrol()) return;
   const isim = document.getElementById('v_isim').value.trim();
   const tarih = document.getElementById('v_tarih').value;
   if (!isim||!tarih) { showToast('Aşı adı ve tarih gerekli!'); return; }
@@ -1572,6 +1629,7 @@ function saveVaccine() {
 }
 
 function saveWeight() {
+  if (misafirKontrol()) return;
   const agirlik = document.getElementById('w_agirlik').value;
   const tarih = document.getElementById('w_tarih').value;
   if (!agirlik||!tarih) { showToast('Ağırlık ve tarih gerekli!'); return; }
@@ -1584,6 +1642,7 @@ function saveWeight() {
 }
 
 function saveMilk() {
+  if (misafirKontrol()) return;
   const miktar = document.getElementById('m_miktar').value;
   const tarih = document.getElementById('m_tarih').value;
   if (!miktar||!tarih) { showToast('Miktar ve tarih gerekli!'); return; }
@@ -1596,6 +1655,7 @@ function saveMilk() {
 }
 
 function saveToh() {
+  if (misafirKontrol()) return;
   const tarih = document.getElementById('toh_tarih').value;
   if (!tarih) { showToast('Tohumlama tarihi gerekli!'); return; }
   const a = animals.find(x => x.id === currentAnimalId);
@@ -1621,6 +1681,7 @@ function notDuzenle(id) {
 }
 
 function saveNot() {
+  if (misafirKontrol()) return;
   const a = animals.find(x => x.id === currentAnimalId);
   if (!a) return;
   a.not = document.getElementById('nd_not').value.trim();
@@ -1629,6 +1690,7 @@ function saveNot() {
 
 // ===== SİL =====
 function deleteAnimal(id) {
+  if (misafirKontrol()) return;
   if (!confirm('Bu hayvanı silmek istediğinize emin misiniz?')) return;
   animals = animals.filter(a => a.id !== id);
   save(); showPage('animals'); showToast('Hayvan silindi');
@@ -1946,6 +2008,7 @@ function disaAktar() {
 }
 
 function tumVerileriSil() {
+  if (misafirKontrol()) return;
   if (!confirm('TÜM veriler silinecek!')) return;
   if (!confirm('Son kez onaylıyor musunuz?')) return;
   animals = []; save(); renderDashboard(); showPage('dashboard'); showToast('Tüm veriler silindi');
@@ -2083,27 +2146,49 @@ window.emailGiris = function() {
   signInWithEmailAndPassword(auth, email, pass).catch(e => { err.textContent = e.code==='auth/invalid-credential'?'E-posta veya şifre yanlış!':e.message; });
 };
 
-window.emailKayit = function() {
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass = document.getElementById('loginPassword').value;
-  const err = document.getElementById('loginError');
-  if (!email||!pass) { err.textContent='E-posta ve şifre gerekli!'; return; }
-  if (pass.length<6) { err.textContent='Şifre en az 6 karakter!'; return; }
-  err.textContent='Kayıt yapılıyor...';
-  createUserWithEmailAndPassword(auth, email, pass).catch(e => { err.textContent=e.message; });
+// Misafir: sahibin verisini oku (sadece okuma)
+window.misafirFirebaseOku = async function() {
+  if (!db) return;
+  try {
+    const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+    // Sahibin UID'si — sen giriş yapınca Firestore'a bir kez yaz, misafir buradan okur
+    const ownerSnap = await getDoc(doc(db, 'sagmal_meta', 'owner'));
+    if (!ownerSnap.exists()) return;
+    const ownerUID = ownerSnap.data().uid;
+    const snap = await getDoc(doc(db, 'sagmal', ownerUID));
+    if (snap.exists() && snap.data().animals) {
+      window.animals = snap.data().animals;
+      localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
+      renderDashboard();
+      renderAnimals();
+    }
+  } catch(e) { console.log('Misafir veri okuma hatası:', e); }
 };
 
-window.cikisYap = function() { if (unsubscribe) unsubscribe(); if (auth) signOut(auth); };
+window.cikisYap = function() {
+  if (unsubscribe) unsubscribe();
+  if (auth) signOut(auth);
+  window.misafirMod = false;
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appScreen').style.display='none';
+  const ms = document.getElementById('misafirStyle');
+  if (ms) ms.remove();
+};
 
 if (auth) {
   onAuthStateChanged(auth, user => {
     currentUser = user;
     if (user) {
+      window.misafirMod = false;
       document.getElementById('loginScreen').style.display='none';
       document.getElementById('appScreen').style.display='block';
       document.getElementById('headerSub').textContent = user.email;
+      document.getElementById('misafirBadge').style.display='none';
+      document.getElementById('ayarlarBtn').style.display='block';
+      // Sahibin UID'sini meta olarak kaydet
+      setDoc(doc(db, 'sagmal_meta', 'owner'), { uid: user.uid }).catch(()=>{});
       startListening();
-    } else {
+    } else if (!window.misafirMod) {
       document.getElementById('loginScreen').style.display='flex';
       document.getElementById('appScreen').style.display='none';
       if (unsubscribe) unsubscribe();
