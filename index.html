@@ -690,13 +690,13 @@ function formatKupe(raw) {
   if (!raw) return '';
   let s = raw.toUpperCase().replace(/[\s\-]/g, '');
   if (!s.startsWith('TR')) s = 'TR' + s;
+  // TR'den sonraki tüm rakamları al
   let nums = s.slice(2).replace(/\D/g, '');
-  nums = nums.replace(/^0+/, '') || '0';
-  if (nums.startsWith('15')) nums = nums.slice(2);
-  nums = nums.replace(/^0+/, '') || '0';
-  nums = nums.padStart(10, '0');
-  if (nums.length > 10) nums = nums.slice(-10);
-  return 'TR15' + nums;
+  // Toplam 12 rakam olacak şekilde sola sıfır doldur
+  if (nums.length < 12) nums = nums.padStart(12, '0');
+  // 12'den uzunsa sağdan 12 al
+  if (nums.length > 12) nums = nums.slice(-12);
+  return 'TR' + nums;
 }
 
 const REPRO_LABEL = { fresh: 'Fresh', tohumlu: 'Tohumlu', gebe: 'Gebe', acik: 'Açık', diger: 'Diğer' };
