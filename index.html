@@ -560,6 +560,42 @@ canvas { max-width: 100%; }
   </div>
 </div>
 
+<!-- DOĞUM MODAL -->
+<div class="modal-overlay" id="dogumModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🐄 Doğum Kaydet</div>
+    <div class="form-group">
+      <label class="form-label">Doğum Tarihi *</label>
+      <input class="form-input" id="dog_tarih" type="date">
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-bottom:10px;">YAVRU BİLGİLERİ (opsiyonel)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Yavru Küpe No</label>
+          <input class="form-input" id="dog_yavru_kupe" placeholder="TR150001234567" oninput="this.value=this.value.toUpperCase()" onblur="this.value=formatKupe(this.value)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Yavru Cinsiyet</label>
+          <select class="form-select" id="dog_yavru_cinsiyet">
+            <option value="disi">Dişi</option>
+            <option value="erkek">Erkek</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Not</label>
+        <input class="form-input" id="dog_not" placeholder="Normal doğum, ikiz vs...">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1" onclick="saveDogum()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('dogumModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
 <!-- AŞI MODAL -->
 <div class="modal-overlay" id="vaccineModal">
   <div class="modal">
@@ -1107,19 +1143,42 @@ function renderDetail() {
   // Reprodüktif
   const tohlar = a.tohumlamalar || [];
   const sonToh = tohlar.length ? tohlar[tohlar.length-1] : null;
+  const gebeOldu = ['gebe','kuru','closeup'].includes(a.repro);
+
   html += `<div class="detail-card">
     <div class="detail-card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>Reprodüktif Durum</span>
-      <button class="btn btn-sm btn-outline" onclick="openTohModal('${a.id}')">+ Tohumlama</button>
+      <div style="display:flex;gap:6px;">
+        ${gebeOldu ? `<button class="btn btn-sm" style="background:var(--fresh);color:#fff;" onclick="openDogumModal('${a.id}')">🐄 Doğum Kaydet</button>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="openTohModal('${a.id}')">+ Tohumlama</button>
+      </div>
     </div>
     <div class="detail-row"><span class="detail-key">Durum</span><span class="detail-val"><span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}">${REPRO_LABEL[a.repro||'diger']}</span></span></div>
     <div class="detail-row"><span class="detail-key">Son Doğum</span><span class="detail-val">${a.sonDogum||'—'}</span></div>
     <div class="detail-row"><span class="detail-key">SGS</span><span class="detail-val">${sgs !== null ? sgs + ' gün' : '—'}</span></div>
-    ${sonToh ? `<div class="detail-row"><span class="detail-key">Son Tohumlama</span><span class="detail-val">${sonToh.tarih}</span></div>
-    <div class="detail-row"><span class="detail-key">Boğa</span><span class="detail-val">${sonToh.bogaAd||'—'} ${sonToh.bogaNo?'('+sonToh.bogaNo+')':''}</span></div>
-    <div class="detail-row"><span class="detail-key">Beklenen Doğum</span><span class="detail-val">${sonToh.beklenenDogum||'—'}</span></div>
-    <div class="detail-row"><span class="detail-key">Gebelik</span><span class="detail-val">${sonToh.sonuc==='gebe'?'✅ Gebe':sonToh.sonuc==='bos'?'❌ Boş':'⏳ Bekliyor'}</span></div>` : ''}
-    ${tohlar.length > 1 ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:6px;">Toplam ${tohlar.length} tohumlama kaydı</div>` : ''}
+    ${tohlar.length > 0 ? `
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Tohumlama Kayıtları</div>
+        ${tohlar.slice().reverse().map((t,ri) => {
+          const i = tohlar.length - 1 - ri;
+          const sonucLabel = t.sonuc==='gebe'?'✅ Gebe' : t.sonuc==='bos'?'❌ Boş' : '⏳ Bekliyor';
+          const sonucRenk = t.sonuc==='gebe'?'var(--fresh)' : t.sonuc==='bos'?'var(--danger)' : 'var(--warn)';
+          return `<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-weight:700;font-size:0.88rem;">${t.tarih}</span>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.72rem;font-weight:600;color:${sonucRenk};">${sonucLabel}</span>
+                <button onclick="deleteToh('${a.id}',${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;padding:2px 6px;">🗑️</button>
+              </div>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;display:flex;flex-wrap:wrap;gap:8px;">
+              ${t.bogaAd ? `<span>🐂 ${t.bogaAd}${t.bogaNo?' ('+t.bogaNo+')':''}</span>` : ''}
+              ${t.beklenenDogum ? `<span>📅 Beklenen: ${t.beklenenDogum}</span>` : ''}
+              ${t.not ? `<span>📝 ${t.not}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
   </div>`;
 
   // Süt verimi
@@ -1638,6 +1697,64 @@ function openVaccineModal(id) { currentAnimalId = id; document.getElementById('v
 function openWeightModal(id) { currentAnimalId = id; document.getElementById('w_tarih').value = today(); document.getElementById('weightModal').classList.add('open'); }
 function openMilkModal(id) { currentAnimalId = id; document.getElementById('m_tarih').value = today(); document.getElementById('milkModal').classList.add('open'); }
 
+function openDogumModal(id) {
+  currentAnimalId = id;
+  document.getElementById('dog_tarih').value = today();
+  document.getElementById('dog_yavru_kupe').value = '';
+  document.getElementById('dog_yavru_cinsiyet').value = 'disi';
+  document.getElementById('dog_not').value = '';
+  document.getElementById('dogumModal').classList.add('open');
+}
+
+function saveDogum() {
+  if (misafirKontrol()) return;
+  const tarih = document.getElementById('dog_tarih').value;
+  if (!tarih) { showToast('Doğum tarihi gerekli!'); return; }
+  const a = animals.find(x => x.id === currentAnimalId);
+  if (!a) return;
+
+  // Anneyi güncelle
+  a.sonDogum = tarih;
+  a.repro = 'fresh';
+  // Gebelik kaydını güncelle
+  const sonGebe = (a.tohumlamalar||[]).filter(t => t.sonuc === 'gebe').pop();
+  if (sonGebe) sonGebe.sonuc = 'dogurdu';
+
+  // Yavru ekle
+  const yavruKupe = document.getElementById('dog_yavru_kupe').value.trim();
+  if (yavruKupe) {
+    const formatted = formatKupe(yavruKupe);
+    if (!animals.find(x => x.kupe === formatted)) {
+      const cinsiyet = document.getElementById('dog_yavru_cinsiyet').value;
+      animals.push({
+        id: genId(),
+        createdAt: Date.now(),
+        kupe: formatted,
+        isletme: a.isletme || '',
+        isim: '',
+        irk: a.irk || '',
+        cinsiyet,
+        dogum: tarih,
+        sonDogum: '',
+        repro: 'buzagi',
+        not: `Anne: ${a.kupe}${document.getElementById('dog_not').value ? ' — '+document.getElementById('dog_not').value : ''}`,
+        durum: 'hayatta',
+        vaccines: [], weights: [], milkRecords: [], tohumlamalar: []
+      });
+      showToast(`✓ Doğum kaydedildi, yavru (${formatted}) eklendi`);
+    } else {
+      showToast('✓ Doğum kaydedildi (yavru küpe zaten kayıtlı)');
+    }
+  } else {
+    showToast('✓ Doğum kaydedildi');
+  }
+
+  save();
+  closeModal('dogumModal');
+  renderDetail();
+  renderDashboard();
+}
+
 function openTohModal(id) {
   currentAnimalId = id;
   document.getElementById('toh_tarih').value = today();
@@ -1899,6 +2016,16 @@ function deleteAnimal(id) {
   if (!confirm('Bu hayvanı silmek istediğinize emin misiniz?')) return;
   animals = animals.filter(a => a.id !== id);
   save(); showPage('animals'); showToast('Hayvan silindi');
+}
+
+function deleteToh(animalId, idx) {
+  if (!confirm('Bu tohumlama kaydı silinsin mi?')) return;
+  const a = animals.find(x => x.id === animalId);
+  if (!a) return;
+  a.tohumlamalar.splice(idx, 1);
+  // Tohumlama kalmadıysa ve repro tohumlu ise → açık yap
+  if (a.tohumlamalar.length === 0 && a.repro === 'tohumlu') a.repro = 'acik';
+  save(); renderDetail(); showToast('Tohumlama kaydı silindi');
 }
 
 function deleteVaccine(animalId, idx) {
