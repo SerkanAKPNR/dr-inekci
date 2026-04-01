@@ -560,6 +560,31 @@ canvas { max-width: 100%; }
   </div>
 </div>
 
+<!-- GEBELİK MUAYENESİ MODAL -->
+<div class="modal-overlay" id="muayeneModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔬 Gebelik Muayenesi</div>
+    <div id="muayeneTohBilgi" style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:14px;font-size:0.82rem;font-family:'JetBrains Mono',monospace;color:var(--text2);"></div>
+    <div class="form-group">
+      <label class="form-label">Muayene Tarihi</label>
+      <input class="form-input" id="muayene_tarih" type="date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sonuç</label>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button onclick="saveMuayene('gebe')" class="btn" style="flex:1;background:var(--fresh);color:#fff;padding:14px;font-size:1rem;">✅ Gebe</button>
+        <button onclick="saveMuayene('bos')" class="btn" style="flex:1;background:var(--danger);color:#fff;padding:14px;font-size:1rem;">❌ Boş</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:4px;">
+      <label class="form-label">Not</label>
+      <input class="form-input" id="muayene_not" placeholder="Veteriner notu...">
+    </div>
+    <button class="btn btn-outline" style="width:100%;margin-top:6px;" onclick="closeModal('muayeneModal')">İptal</button>
+  </div>
+</div>
+
 <!-- DOĞUM MODAL -->
 <div class="modal-overlay" id="dogumModal">
   <div class="modal">
@@ -1181,13 +1206,15 @@ function renderDetail() {
         <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Tohumlama Kayıtları</div>
         ${tohlar.slice().reverse().map((t,ri) => {
           const i = tohlar.length - 1 - ri;
-          const sonucLabel = t.sonuc==='gebe'?'✅ Gebe' : t.sonuc==='bos'?'❌ Boş' : '⏳ Bekliyor';
-          const sonucRenk = t.sonuc==='gebe'?'var(--fresh)' : t.sonuc==='bos'?'var(--danger)' : 'var(--warn)';
+          const sonucLabel = t.sonuc==='gebe'?'✅ Gebe' : t.sonuc==='bos'?'❌ Boş' : t.sonuc==='dogurdu'?'🐄 Doğurdu' : '⏳ Bekliyor';
+          const sonucRenk = t.sonuc==='gebe'?'var(--fresh)' : t.sonuc==='bos'?'var(--danger)' : t.sonuc==='dogurdu'?'var(--tohumlu)' : 'var(--warn)';
+          const muayeneBtn = t.sonuc === 'bekliyor' ? `<button onclick="openMuayeneModal('${a.id}',${i})" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">🔬 Muayene</button>` : '';
           return `<div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:6px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
               <span style="font-weight:700;font-size:0.88rem;">${t.tarih}</span>
-              <div style="display:flex;align-items:center;gap:8px;">
+              <div style="display:flex;align-items:center;gap:6px;">
                 <span style="font-size:0.72rem;font-weight:600;color:${sonucRenk};">${sonucLabel}</span>
+                ${muayeneBtn}
                 <button onclick="deleteToh('${a.id}',${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;padding:2px 6px;">🗑️</button>
               </div>
             </div>
@@ -2047,13 +2074,53 @@ function deleteSonDogum(animalId) {
   save(); renderDetail(); showToast('Son doğum tarihi silindi');
 }
 
+let muayeneAnimalId = null;
+let muayeneTohIdx = null;
+
+function openMuayeneModal(animalId, idx) {
+  muayeneAnimalId = animalId;
+  muayeneTohIdx = idx;
+  const a = animals.find(x => x.id === animalId);
+  if (!a) return;
+  const t = a.tohumlamalar[idx];
+  document.getElementById('muayeneTohBilgi').innerHTML =
+    `Tohumlama: ${t.tarih}${t.bogaAd?' • '+t.bogaAd:''}${t.beklenenDogum?' • Beklenen: '+t.beklenenDogum:''}`;
+  document.getElementById('muayene_tarih').value = today();
+  document.getElementById('muayene_not').value = '';
+  document.getElementById('muayeneModal').classList.add('open');
+}
+
+function saveMuayene(sonuc) {
+  if (misafirKontrol()) return;
+  const a = animals.find(x => x.id === muayeneAnimalId);
+  if (!a) return;
+  const t = a.tohumlamalar[muayeneTohIdx];
+  if (!t) return;
+
+  t.sonuc = sonuc;
+  const not = document.getElementById('muayene_not').value.trim();
+  if (not) t.not = (t.not ? t.not + ' | ' : '') + `Muayene (${document.getElementById('muayene_tarih').value}): ${not}`;
+
+  // Repro durumunu güncelle
+  if (sonuc === 'gebe') {
+    a.repro = 'gebe';
+    showToast('✅ Gebelik teyit edildi');
+  } else if (sonuc === 'bos') {
+    a.repro = 'acik';
+    showToast('❌ Boş — hayvan açığa alındı');
+  }
+
+  save();
+  closeModal('muayeneModal');
+  renderDetail();
+  renderDashboard();
+}
+
 function deleteToh(animalId, idx) {
-  if (!confirm('Bu tohumlama kaydı silinsin mi?')) return;
+  if (!confirm('Bu tohumlama kaydı silinsin mi?\nHayvanın repro durumu değişmeyecek.')) return;
   const a = animals.find(x => x.id === animalId);
   if (!a) return;
   a.tohumlamalar.splice(idx, 1);
-  // Tohumlama kalmadıysa ve repro tohumlu ise → açık yap
-  if (a.tohumlamalar.length === 0 && a.repro === 'tohumlu') a.repro = 'acik';
   save(); renderDetail(); showToast('Tohumlama kaydı silindi');
 }
 
