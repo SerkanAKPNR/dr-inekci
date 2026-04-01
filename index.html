@@ -1154,7 +1154,13 @@ function renderDetail() {
       </div>
     </div>
     <div class="detail-row"><span class="detail-key">Durum</span><span class="detail-val"><span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}">${REPRO_LABEL[a.repro||'diger']}</span></span></div>
-    <div class="detail-row"><span class="detail-key">Son Doğum</span><span class="detail-val">${a.sonDogum||'—'}</span></div>
+    <div class="detail-row">
+      <span class="detail-key">Son Doğum</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="detail-val">${a.sonDogum||'—'}</span>
+        ${a.sonDogum ? `<button onclick="deleteSonDogum('${a.id}')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;padding:2px 6px;">🗑️</button>` : ''}
+      </div>
+    </div>
     <div class="detail-row"><span class="detail-key">SGS</span><span class="detail-val">${sgs !== null ? sgs + ' gün' : '—'}</span></div>
     ${tohlar.length > 0 ? `
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
@@ -2016,6 +2022,15 @@ function deleteAnimal(id) {
   if (!confirm('Bu hayvanı silmek istediğinize emin misiniz?')) return;
   animals = animals.filter(a => a.id !== id);
   save(); showPage('animals'); showToast('Hayvan silindi');
+}
+
+function deleteSonDogum(animalId) {
+  if (!confirm('Son doğum tarihi silinsin mi?\nSGS sıfırlanacak ve repro durumu "Açık" olarak güncellenecek.')) return;
+  const a = animals.find(x => x.id === animalId);
+  if (!a) return;
+  a.sonDogum = '';
+  a.repro = 'acik';
+  save(); renderDetail(); showToast('Son doğum tarihi silindi');
 }
 
 function deleteToh(animalId, idx) {
