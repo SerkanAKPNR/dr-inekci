@@ -1192,7 +1192,23 @@ function renderDetail() {
         <button class="btn btn-sm btn-outline" onclick="openTohModal('${a.id}')">+ Tohumlama</button>
       </div>
     </div>
-    <div class="detail-row"><span class="detail-key">Durum</span><span class="detail-val"><span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}">${REPRO_LABEL[a.repro||'diger']}</span></span></div>
+    <div class="detail-row">
+      <span class="detail-key">Durum</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}">${REPRO_LABEL[a.repro||'diger']}</span>
+        <select onchange="reproGuncelle('${a.id}', this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text);font-size:0.75rem;font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;">
+          <option value="">✏️ Değiştir</option>
+          <option value="fresh">Fresh</option>
+          <option value="tohumlu">Tohumlu</option>
+          <option value="gebe">Gebe</option>
+          <option value="acik">Açık</option>
+          <option value="kuru">Kuru</option>
+          <option value="closeup">Close-up</option>
+          <option value="duve">Düve</option>
+          <option value="diger">Diğer</option>
+        </select>
+      </div>
+    </div>
     <div class="detail-row">
       <span class="detail-key">Son Doğum</span>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -2063,6 +2079,19 @@ function deleteAnimal(id) {
   if (!confirm('Bu hayvanı silmek istediğinize emin misiniz?')) return;
   animals = animals.filter(a => a.id !== id);
   save(); showPage('animals'); showToast('Hayvan silindi');
+}
+
+function reproGuncelle(animalId, yeniRepro) {
+  if (!yeniRepro) return;
+  if (misafirKontrol()) return;
+  const a = animals.find(x => x.id === animalId);
+  if (!a) return;
+  const eskiLabel = REPRO_LABEL[a.repro||'diger'];
+  const yeniLabel = REPRO_LABEL[yeniRepro];
+  if (!confirm(`Repro durumu "${eskiLabel}" → "${yeniLabel}" olarak değiştirilsin mi?`)) return;
+  a.repro = yeniRepro;
+  save(); renderDetail(); renderDashboard();
+  showToast(`✓ Durum: ${yeniLabel}`);
 }
 
 function deleteSonDogum(animalId) {
