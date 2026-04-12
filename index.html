@@ -1762,7 +1762,9 @@ function suruGrubaUygula() {
 function getFilteredAnimalList() {
   const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
-  if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
+  if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
+  else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
+  else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q)||(a.isim||'').toLowerCase().includes(q));
   return list;
 }
