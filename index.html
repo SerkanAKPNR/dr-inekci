@@ -314,6 +314,19 @@ canvas { max-width: 100%; }
     <button class="btn btn-outline" onclick="cikisYap()" style="width:100%;padding:14px;font-size:1rem;">🚪 Çıkış Yap</button>
     <button class="btn btn-outline" onclick="tumVerileriSil()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--danger);color:var(--danger);">🗑️ Tüm Verileri Sil</button>
   </div>
+  <div class="sec-title">Reprodüktif Ayarlar</div>
+  <div class="detail-card">
+    <div class="detail-row">
+      <span class="detail-key">Gönüllü Bekleme Süresi</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="ay_bekleme" style="width:70px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.9rem;outline:none;text-align:center;" min="1" max="120">
+        <span style="font-size:0.8rem;color:var(--text2);">gün</span>
+        <button onclick="beklemeSuresiniKaydet()" class="btn btn-sm">Kaydet</button>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Bu süreden önce tohumlama uyarısı verilmez</div>
+  </div>
+
   <div class="sec-title">Uygulama</div>
   <div class="detail-card">
     <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.03.29-v2</span></div>
@@ -1080,7 +1093,7 @@ function renderDashboard() {
   aktif.forEach(a => {
     const sgs = calcSGS(a.sonDogum);
     if (sgs !== null) {
-      if (a.repro === 'fresh' && sgs > 21) repro_uyari.push({a, mesaj: `SGS ${sgs} — Tohumlama zamanı!`, renk: 'var(--warn)'});
+      if (a.repro === 'fresh' && sgs > getBeklemeSuresi()) repro_uyari.push({a, mesaj: `SGS ${sgs} — Tohumlama zamanı! (Bekleme: ${getBeklemeSuresi()}g)`, renk: 'var(--warn)'});
       if (a.repro === 'tohumlu') {
         const tohlar = (a.tohumlamalar||[]).filter(t => t.sonuc === 'bekliyor');
         tohlar.forEach(t => {
@@ -1673,9 +1686,21 @@ function senkronSil(id) {
 }
 
 // ===== AYARLAR =====
+function getBeklemeSuresi() {
+  return parseInt(localStorage.getItem('ayar_bekleme') || '45');
+}
+
+function beklemeSuresiniKaydet() {
+  const val = document.getElementById('ay_bekleme').value;
+  if (!val || val < 1) { showToast('Geçerli bir gün girin!'); return; }
+  localStorage.setItem('ayar_bekleme', val);
+  showToast(`✓ Gönüllü bekleme süresi: ${val} gün`);
+}
+
 function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
   document.getElementById('ayarlarToplam').textContent = aktif + ' hayvan';
+  document.getElementById('ay_bekleme').value = getBeklemeSuresi();
 }
 
 // ===== SÜRÜ =====
