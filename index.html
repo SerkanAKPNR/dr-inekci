@@ -1282,6 +1282,24 @@ function renderDetail() {
           </div>`;
         }).join('')}
       </div>` : ''}
+    ${(() => {
+      // Son buzağıyı bul — bu hayvandan doğan, en yakın tarihli
+      const buzagilar = animals.filter(x => x.not && x.not.startsWith(`Anne: ${a.kupe}`));
+      // dogum alanına göre sırala
+      const sonBuzagi = buzagilar.sort((x,y) => (y.dogum||'').localeCompare(x.dogum||'')).find(x => x.dogum);
+      if (!sonBuzagi) return '';
+      const cinsStr = sonBuzagi.cinsiyet === 'erkek' ? '♂ Erkek' : '♀ Dişi';
+      return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+        <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Son Buzağı</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 10px;cursor:pointer;" onclick="openDetail('${sonBuzagi.id}')">
+          <div>
+            <span style="font-weight:700;font-size:0.88rem;color:var(--accent);">🐮 ${sonBuzagi.kupe||'—'}</span>
+            <span style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-left:8px;">${cinsStr} • ${sonBuzagi.dogum||'—'}</span>
+          </div>
+          <span style="color:var(--text2);font-size:0.8rem;">›</span>
+        </div>
+      </div>`;
+    })()}
   </div>`;
 
   // Süt verimi
