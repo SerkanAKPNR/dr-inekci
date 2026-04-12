@@ -1122,8 +1122,8 @@ function renderDashboard() {
 
 // ===== HAYVANLAR =====
 function renderAnimals() {
-  const filters = ['hepsi','sagmal','fresh','tohumlu','gebe','kuru','closeup','acik','duve','gebeduve','kucuk'];
-  const labels = {hepsi:'Hepsi', sagmal:'Sağmal', fresh:'Fresh', tohumlu:'Tohumlu', gebe:'Gebe', kuru:'Kuru', closeup:'Close-up', acik:'Açık', duve:'Düve', gebeduve:'Gebe Düve', kucuk:'Buzağı/Dana'};
+  const filters = ['hepsi','sagmal','fresh','tohumlu','gebe','kuru','closeup','acik','duve','gebeduve','kucuk','l1','l2','l3'];
+  const labels = {hepsi:'Hepsi', sagmal:'Sağmal', fresh:'Fresh', tohumlu:'Tohumlu', gebe:'Gebe', kuru:'Kuru', closeup:'Close-up', acik:'Açık', duve:'Düve', gebeduve:'Gebe Düve', kucuk:'Buzağı/Dana', l1:'1.Lakt.', l2:'2.Lakt.', l3:'3+Lakt.'};
   document.getElementById('filterChips').innerHTML = filters.map(f =>
     `<button class="chip ${currentFilter===f?'active':''}" onclick="currentFilter='${f}';renderAnimals()">${labels[f]}</button>`
   ).join('');
@@ -1132,6 +1132,9 @@ function renderAnimals() {
   let list = animals.filter(a => !a.durum || a.durum === 'hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
+  else if (currentFilter === 'l1') list = list.filter(a => (a.laktasyon||0) === 1);
+  else if (currentFilter === 'l2') list = list.filter(a => (a.laktasyon||0) === 2);
+  else if (currentFilter === 'l3') list = list.filter(a => (a.laktasyon||0) >= 3);
   else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
@@ -1146,13 +1149,17 @@ function animalCard(a) {
   const sgsStr = sgs !== null ? `SGS:${sgs}` : '—';
   const sonSut = a.milkRecords && a.milkRecords.length ? a.milkRecords[a.milkRecords.length-1].miktar + 'L' : '—';
   const repro = a.repro || 'diger';
+  const laktStr = a.laktasyon > 0 && a.cinsiyet !== 'erkek' ? `<div style="font-size:0.62rem;font-family:'JetBrains Mono',monospace;color:var(--tohumlu);margin-top:1px;">${a.laktasyon}. Laktasyon</div>` : '';
   return `<div class="animal-card" onclick="openDetail('${a.id}')">
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
       <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
     </div>
     <div class="info">
-      <span>🏷 ${a.kupe||'—'}</span>
+      <div>
+        <span>🏷 ${a.kupe||'—'}</span>
+        ${laktStr}
+      </div>
       <span>📅 ${sgsStr}</span>
       <span>🥛 ${sonSut}</span>
       ${a.irk ? `<span>🐄 ${a.irk}</span>` : ''}
@@ -1815,10 +1822,19 @@ function openVaccineModal(id) { currentAnimalId = id; document.getElementById('v
 function openWeightModal(id) { currentAnimalId = id; document.getElementById('w_tarih').value = today(); document.getElementById('weightModal').classList.add('open'); }
 function openMilkModal(id) { currentAnimalId = id; document.getElementById('m_tarih').value = today(); document.getElementById('milkModal').classList.add('open'); }
 
+function nextKupeNo() {
+  const nums = animals.map(a => {
+    const m = (a.kupe||'').match(/^TR\d{2}(\d+)$/);
+    return m ? parseInt(m[1]) : 0;
+  });
+  const max = nums.length ? Math.max(...nums) : 0;
+  return formatKupe(String(max + 1));
+}
+
 function openDogumModal(id) {
   currentAnimalId = id;
   document.getElementById('dog_tarih').value = today();
-  document.getElementById('dog_yavru_kupe').value = '';
+  document.getElementById('dog_yavru_kupe').value = nextKupeNo();
   document.getElementById('dog_yavru_cinsiyet').value = 'disi';
   document.getElementById('dog_not').value = '';
   document.getElementById('dogumModal').classList.add('open');
