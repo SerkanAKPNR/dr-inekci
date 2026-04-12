@@ -2681,7 +2681,7 @@ function startListening() {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
-      if (window.currentPage === 'detail') showPage('dashboard');
+      if (window.currentPage === 'detail') renderDetail();
       else { renderDashboard(); if (window.currentPage === 'animals') renderAnimals(); }
     }
   });
