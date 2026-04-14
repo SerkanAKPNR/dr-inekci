@@ -314,6 +314,24 @@ canvas { max-width: 100%; }
     <button class="btn btn-outline" onclick="cikisYap()" style="width:100%;padding:14px;font-size:1rem;">🚪 Çıkış Yap</button>
     <button class="btn btn-outline" onclick="tumVerileriSil()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--danger);color:var(--danger);">🗑️ Tüm Verileri Sil</button>
   </div>
+  <div class="sec-title">İşletme Ayarları</div>
+  <div class="detail-card" id="isletmeAyarlariCard">
+    <div class="detail-row">
+      <span class="detail-key">İşletme Adı</span>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;">
+        <input type="text" id="ay_isletme_ad" style="width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.82rem;outline:none;">
+      </div>
+    </div>
+    <div class="detail-row">
+      <span class="detail-key">Sorumlu E-posta</span>
+      <div style="display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;">
+        <input type="email" id="ay_isletme_email" style="width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.82rem;outline:none;">
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Bu e-postayla giriş yapan kişi bu işletmeye erişir</div>
+    <button onclick="isletmeAyarlariKaydet()" class="btn" style="width:100%;margin-top:8px;">💾 Kaydet</button>
+  </div>
+
   <div class="sec-title">Reprodüktif Ayarlar</div>
   <div class="detail-card">
     <div class="detail-row">
@@ -1782,10 +1800,37 @@ function beklemeSuresiniKaydet() {
   showToast(`✓ Gönüllü bekleme süresi: ${val} gün`);
 }
 
+function isletmeAyarlariKaydet() {
+  if (!activeIsletmeId || !db) { showToast('İşletme bulunamadı!'); return; }
+  const ad = document.getElementById('ay_isletme_ad').value.trim();
+  const email = document.getElementById('ay_isletme_email').value.trim();
+  if (!ad) { showToast('İşletme adı boş olamaz!'); return; }
+  import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({updateDoc, doc: fDoc}) => {
+    updateDoc(fDoc(db, 'isletmeler', activeIsletmeId), {
+      ad, sorumluEmail: email
+    }).then(() => {
+      document.getElementById('headerSub').textContent = ad;
+      localStorage.setItem('aktif_isletme_ad', ad);
+      showToast('✓ İşletme ayarları kaydedildi!');
+    });
+  });
+}
+
 function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
   document.getElementById('ayarlarToplam').textContent = aktif + ' hayvan';
   document.getElementById('ay_bekleme').value = getBeklemeSuresi();
+  // İşletme ayarlarını yükle
+  if (activeIsletmeId && db) {
+    import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({getDoc, doc: fDoc}) => {
+      getDoc(fDoc(db, 'isletmeler', activeIsletmeId)).then(snap => {
+        if (snap.exists()) {
+          document.getElementById('ay_isletme_ad').value = snap.data().ad || '';
+          document.getElementById('ay_isletme_email').value = snap.data().sorumluEmail || '';
+        }
+      });
+    });
+  }
 }
 
 // ===== SÜRÜ =====
