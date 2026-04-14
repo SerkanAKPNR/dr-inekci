@@ -576,6 +576,41 @@ canvas { max-width: 100%; }
       <button class="btn" style="flex:1" onclick="saveEdit()">Kaydet</button>
       <button class="btn btn-outline" onclick="closeModal('editModal')">İptal</button>
     </div>
+    <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+    <button class="btn btn-outline" style="width:100%;border-color:var(--fresh);color:var(--fresh);" onclick="closeModal('editModal');openBuzagiEkleModal(currentAnimalId)">🐮 Buzağı Ekle</button>
+  </div>
+</div>
+
+<!-- BUZAĞI EKLE MODAL -->
+<div class="modal-overlay" id="buzagiModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🐮 Buzağı Ekle</div>
+    <div class="form-group">
+      <label class="form-label">Küpe No</label>
+      <input class="form-input" id="bz_kupe" placeholder="TR15..." oninput="this.value=this.value.toUpperCase()">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Cinsiyet</label>
+        <select class="form-select" id="bz_cinsiyet">
+          <option value="disi">♀ Dişi</option>
+          <option value="erkek">♂ Erkek</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Doğum Tarihi</label>
+        <input class="form-input" id="bz_dogum" type="date">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Annenin Laktasyon Sayısı <span style="color:var(--text2);font-size:0.7rem;">(boş bırakırsan otomatik artar)</span></label>
+      <input class="form-input" id="bz_laktasyon" type="number" placeholder="Otomatik" min="1">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:6px;">
+      <button class="btn" style="flex:1" onclick="saveBuzagiEkle()">Kaydet</button>
+      <button class="btn btn-outline" onclick="closeModal('buzagiModal')">İptal</button>
+    </div>
   </div>
 </div>
 
@@ -930,6 +965,15 @@ history.pushState(null, '', window.location.href);
 const kuruUyariGosterildi = new Set(JSON.parse(localStorage.getItem('kuruUyariGosterildi') || '[]'));
 
 function kuruUyariKontrol(aktif) {
+  // Close-up: doğuma 21 gün veya daha az kalan kuru hayvanlar
+  aktif.filter(a => a.repro === 'kuru').forEach(a => {
+    const toh = (a.tohumlamalar || []).find(t => t.sonuc === 'gebe' && t.beklenenDogum);
+    if (!toh) return;
+    const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
+    if (kalan <= 21 && kalan >= 0) { a.repro = 'closeup'; }
+  });
+
+  // Kuru: doğuma 60 gün veya daha az kalan gebe hayvanlar
   const adaylar = aktif.filter(a => {
     if (a.repro !== 'gebe') return false;
     const toh = (a.tohumlamalar || []).find(t => t.sonuc === 'gebe' && t.beklenenDogum);
@@ -1149,20 +1193,36 @@ function animalCard(a) {
   const sgsStr = sgs !== null ? `SGS:${sgs}` : '—';
   const sonSut = a.milkRecords && a.milkRecords.length ? a.milkRecords[a.milkRecords.length-1].miktar + 'L' : '—';
   const repro = a.repro || 'diger';
-  const laktStr = a.laktasyon > 0 && a.cinsiyet !== 'erkek' ? `<div style="font-size:0.62rem;font-family:'JetBrains Mono',monospace;color:var(--tohumlu);margin-top:1px;">${a.laktasyon}. Laktasyon</div>` : '';
-  return `<div class="animal-card" onclick="openDetail('${a.id}')">
+  const laktStr = a.laktasyon > 0 && a.cinsiyet !== 'erkek' ? `${a.laktasyon}. Lakt.` : (a.irk || '—');
+
+  // Doğuma kalan güne göre border rengi
+  let borderStyle = '';
+  if (['gebe','kuru','closeup','gebeduve'].includes(repro)) {
+    const toh = (a.tohumlamalar||[]).find(t => t.beklenenDogum && (t.sonuc==='gebe'||t.sonuc==='bekliyor'));
+    if (toh) {
+      const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
+      if (kalan <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
+      else if (kalan <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
+      else borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;';
+    }
+  } else if (repro === 'fresh') {
+    borderStyle = 'border-color:#e87820;box-shadow:0 0 0 1px #e8782033;';
+  } else if (repro === 'tohumlu') {
+    borderStyle = 'border-color:#3a8fd4;box-shadow:0 0 0 1px #3a8fd433;';
+  } else if (repro === 'acik') {
+    borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
+  }
+
+  return `<div class="animal-card" onclick="openDetail('${a.id}')" style="${borderStyle}">
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
       <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
     </div>
     <div class="info">
-      <div>
-        <span>🏷 ${a.kupe||'—'}</span>
-        ${laktStr}
-      </div>
+      <span>🏷 ${a.kupe||'—'}</span>
       <span>📅 ${sgsStr}</span>
       <span>🥛 ${sonSut}</span>
-      ${a.irk ? `<span>🐄 ${a.irk}</span>` : ''}
+      <span>🔢 ${laktStr}</span>
     </div>
   </div>`;
 }
@@ -1827,6 +1887,48 @@ function navigateAnimal(dir) {
   if (newIdx < 0 || newIdx >= list.length) return;
   currentAnimalId = list[newIdx].id;
   renderDetail();
+}
+
+// ===== BUZAĞI EKLE =====
+function openBuzagiEkleModal(id) {
+  currentAnimalId = id;
+  document.getElementById('bz_kupe').value = nextKupeNo();
+  document.getElementById('bz_cinsiyet').value = 'disi';
+  document.getElementById('bz_dogum').value = today();
+  document.getElementById('bz_laktasyon').value = '';
+  document.getElementById('buzagiModal').classList.add('open');
+}
+
+function saveBuzagiEkle() {
+  if (misafirKontrol()) return;
+  const anne = animals.find(x => x.id === currentAnimalId);
+  if (!anne) return;
+  const kupeRaw = document.getElementById('bz_kupe').value.trim();
+  const dogum = document.getElementById('bz_dogum').value;
+  if (!kupeRaw || !dogum) { showToast('Küpe no ve doğum tarihi gerekli!'); return; }
+  const kupe = formatKupe(kupeRaw);
+  if (animals.find(x => x.kupe === kupe)) { showToast('Bu küpe no zaten kayıtlı!'); return; }
+  const cinsiyet = document.getElementById('bz_cinsiyet').value;
+  const laktVal = document.getElementById('bz_laktasyon').value;
+
+  // Buzağıyı ekle
+  animals.push({
+    id: genId(), createdAt: Date.now(), kupe,
+    isletme: '', isim: '', irk: anne.irk || '',
+    cinsiyet, dogum, sonDogum: '', repro: 'buzagi', laktasyon: 0,
+    not: `Anne: ${anne.kupe}`, durum: 'hayatta',
+    vaccines: [], weights: [], milkRecords: [], tohumlamalar: []
+  });
+
+  // Anneyi güncelle
+  if (!anne.sonDogum) anne.sonDogum = dogum;
+  anne.laktasyon = laktVal ? parseInt(laktVal) : (anne.laktasyon || 0) + 1;
+
+  save();
+  closeModal('buzagiModal');
+  showToast(`✓ Buzağı (${kupe}) eklendi, laktasyon: ${anne.laktasyon}`);
+  renderDetail();
+  renderDashboard();
 }
 
 // ===== MODAL FONKSİYONLARI =====
