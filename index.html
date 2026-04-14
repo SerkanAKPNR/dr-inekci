@@ -2904,12 +2904,13 @@ window.adminIsletmeDegistir = async function() {
 window.yeniIsletmeEkle = function() {
   const ad = prompt('Yeni işletme adı:');
   if (!ad) return;
+  const email = prompt('İşletme sorumlusunun e-postası (opsiyonel):');
   const id = currentUser.uid + '_' + Date.now();
   setDoc(doc(db, 'isletmeler', id), {
-    ad, sahipUid: currentUser.uid, animals: [], updatedAt: new Date().toISOString()
+    ad, sahipUid: currentUser.uid, sorumluEmail: email||'', animals: [], updatedAt: new Date().toISOString()
   }).then(() => {
     showToast('✓ İşletme oluşturuldu!');
-    window.isletmeyeGir(id, ad);
+    adminIsletmeDegistir();
   });
 };
 
@@ -3013,16 +3014,28 @@ if (auth) {
         // Admin için her zaman seçim ekranı göster
         showIsletmeSecimEkrani(isletmeler);
       } else {
-        // Normal kullanıcı: kendi işletmesine git
-        const isletmeId = user.uid;
-        const isletmeSnap = await getDoc(doc(db, 'isletmeler', isletmeId)).catch(()=>null);
-        if (!isletmeSnap?.exists()) {
-          // Yeni kullanıcı — boş işletme oluştur
-          await setDoc(doc(db, 'isletmeler', isletmeId), {
-            ad: user.email, sahipUid: user.uid, animals: [], updatedAt: new Date().toISOString()
-          });
+        // Normal kullanıcı: e-postasına atanmış işletmeyi bul
+        const tumSnap = await getDocs(collection(db, 'isletmeler'));
+        let atanmisIsletme = null;
+        tumSnap.forEach(d => {
+          const data = d.data();
+          if (data.sorumluEmail === user.email) atanmisIsletme = { id: d.id, ...data };
+        });
+
+        if (atanmisIsletme) {
+          // Atanmış işletme var — direkt gir
+          window.isletmeyeGir(atanmisIsletme.id, atanmisIsletme.ad);
+        } else {
+          // Atanmış işletme yok — kendi UID'sine bak
+          const isletmeId = user.uid;
+          const isletmeSnap = await getDoc(doc(db, 'isletmeler', isletmeId)).catch(()=>null);
+          if (!isletmeSnap?.exists()) {
+            await setDoc(doc(db, 'isletmeler', isletmeId), {
+              ad: user.email, sahipUid: user.uid, sorumluEmail: user.email, animals: [], updatedAt: new Date().toISOString()
+            });
+          }
+          window.isletmeyeGir(isletmeId, isletmeSnap?.data()?.ad || user.email);
         }
-        window.isletmeyeGir(isletmeId, isletmeSnap?.data()?.ad || user.email);
       }
     } else if (!window.misafirMod) {
       document.getElementById('loginScreen').style.display='flex';
