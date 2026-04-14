@@ -3010,12 +3010,8 @@ if (auth) {
           });
           isletmeler.push({ id: isletmeId, ad: 'İşletmem', hayvanSayisi: mevcutAnimals.filter(a=>!a.durum||a.durum==='hayatta').length });
         }
-        if (isletmeler.length === 1) {
-          // Tek işletme varsa direkt gir
-          window.isletmeyeGir(isletmeler[0].id, isletmeler[0].ad);
-        } else {
-          showIsletmeSecimEkrani(isletmeler);
-        }
+        // Admin için her zaman seçim ekranı göster
+        showIsletmeSecimEkrani(isletmeler);
       } else {
         // Normal kullanıcı: kendi işletmesine git
         const isletmeId = user.uid;
