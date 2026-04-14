@@ -1970,6 +1970,7 @@ function saveDogum() {
   // Anneyi güncelle
   a.sonDogum = tarih;
   a.repro = 'fresh';
+  a.laktasyon = (a.laktasyon || 0) + 1;
   // Gebelik kaydını güncelle
   const sonGebe = (a.tohumlamalar||[]).filter(t => t.sonuc === 'gebe').pop();
   if (sonGebe) sonGebe.sonuc = 'dogurdu';
@@ -2802,10 +2803,9 @@ showPage('dashboard');
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// Firebase config buraya gelecek - kullanıcı kendi config'ini girecek
 const firebaseConfig = {
   apiKey: "AIzaSyA2aR635y-wXjW26mTanXMZmVPOsxqP1aE",
   authDomain: "dr-inekci-1c394.firebaseapp.com",
@@ -2814,6 +2814,8 @@ const firebaseConfig = {
   messagingSenderId: "831699218431",
   appId: "1:831699218431:web:da587576d444696c8601ca"
 };
+
+const ADMIN_EMAIL = 'akpinar.serkan.vet@gmail.com';
 
 let app, db, auth;
 try {
@@ -2824,21 +2826,24 @@ try {
 
 let currentUser = null;
 let unsubscribe = null;
+let activeIsletmeId = null; // Şu an hangi işletmenin verisi gösteriliyor
 
+// ===== KAYDET =====
 async function saveToFirebase() {
-  if (!currentUser || !db) return;
+  if (!currentUser || !db || !activeIsletmeId) return;
   try {
-    await setDoc(doc(db, 'sagmal', currentUser.uid), {
+    await setDoc(doc(db, 'isletmeler', activeIsletmeId), {
       animals: JSON.parse(JSON.stringify(window.animals)),
       updatedAt: new Date().toISOString()
     });
   } catch(e) { console.error('Kayıt hatası:', e); }
 }
 
+// ===== DİNLE =====
 function startListening() {
-  if (!currentUser || !db) return;
+  if (!currentUser || !db || !activeIsletmeId) return;
   if (unsubscribe) unsubscribe();
-  unsubscribe = onSnapshot(doc(db, 'sagmal', currentUser.uid), (snap) => {
+  unsubscribe = onSnapshot(doc(db, 'isletmeler', activeIsletmeId), (snap) => {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
@@ -2846,6 +2851,83 @@ function startListening() {
       else { renderDashboard(); if (window.currentPage === 'animals') renderAnimals(); }
     }
   });
+}
+
+// ===== İŞLETME SEÇ EKRANI =====
+function showIsletmeSecimEkrani(isletmeler) {
+  const loginScreen = document.getElementById('loginScreen');
+  loginScreen.innerHTML = `
+    <div style="font-size:2.5rem;margin-bottom:12px;">🐄</div>
+    <h1 style="font-size:1.4rem;font-weight:700;color:var(--accent2);margin-bottom:4px;">Sağmal İnek</h1>
+    <p style="color:var(--text2);font-size:0.8rem;margin-bottom:24px;font-family:'JetBrains Mono',monospace;">İşletme Seç</p>
+    <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
+      ${isletmeler.map(i => `
+        <button onclick="isletmeyeGir('${i.id}','${i.ad}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:1rem;font-weight:700;color:var(--text);">🏡 ${i.ad}</div>
+          <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;">${i.hayvanSayisi || '—'} hayvan</div>
+        </button>`).join('')}
+      <button onclick="yeniIsletmeEkle()" style="background:none;border:1px dashed var(--border);border-radius:12px;padding:14px;color:var(--text2);cursor:pointer;font-size:0.9rem;">+ Yeni İşletme Ekle</button>
+      <button onclick="cikisYap()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.8rem;padding:8px;">🚪 Çıkış Yap</button>
+    </div>`;
+  loginScreen.style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+}
+
+window.isletmeyeGir = async function(isletmeId, isletmeAd) {
+  activeIsletmeId = isletmeId;
+  localStorage.setItem('aktif_isletme_id', isletmeId);
+  localStorage.setItem('aktif_isletme_ad', isletmeAd);
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('headerSub').textContent = isletmeAd;
+  document.getElementById('misafirBadge').style.display = 'none';
+  document.getElementById('ayarlarBtn').style.display = 'block';
+
+  // Admin ise işletme değiştirme butonu ekle
+  if (currentUser.email === ADMIN_EMAIL) {
+    const hr = document.getElementById('headerRight');
+    hr.innerHTML = `
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="adminIsletmeDegistir()" style="background:none;border:1px solid var(--accent);border-radius:8px;padding:5px 10px;color:var(--accent);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">🔄 İşletme</button>
+        <button onclick="showPage('ayarlar')" id="ayarlarBtn" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:0.8rem;cursor:pointer;">⚙️</button>
+      </div>`;
+  }
+  startListening();
+};
+
+window.adminIsletmeDegistir = async function() {
+  if (unsubscribe) unsubscribe();
+  const isletmeler = await getIsletmeler();
+  showIsletmeSecimEkrani(isletmeler);
+};
+
+window.yeniIsletmeEkle = function() {
+  const ad = prompt('Yeni işletme adı:');
+  if (!ad) return;
+  const id = currentUser.uid + '_' + Date.now();
+  setDoc(doc(db, 'isletmeler', id), {
+    ad, sahipUid: currentUser.uid, animals: [], updatedAt: new Date().toISOString()
+  }).then(() => {
+    showToast('✓ İşletme oluşturuldu!');
+    window.isletmeyeGir(id, ad);
+  });
+};
+
+async function getIsletmeler() {
+  const isletmeler = [];
+  try {
+    // Admin: tüm işletmeleri getir
+    const snap = await getDocs(collection(db, 'isletmeler'));
+    snap.forEach(d => {
+      const data = d.data();
+      isletmeler.push({
+        id: d.id,
+        ad: data.ad || d.id,
+        hayvanSayisi: (data.animals||[]).filter(a => !a.durum||a.durum==='hayatta').length
+      });
+    });
+  } catch(e) { console.error(e); }
+  return isletmeler;
 }
 
 window._firebaseSave = function(data) { window.animals = data; saveToFirebase(); };
@@ -2859,21 +2941,18 @@ window.emailGiris = function() {
   signInWithEmailAndPassword(auth, email, pass).catch(e => { err.textContent = e.code==='auth/invalid-credential'?'E-posta veya şifre yanlış!':e.message; });
 };
 
-// Misafir: sahibin verisini oku (sadece okuma)
 window.misafirFirebaseOku = async function() {
   if (!db) return;
   try {
-    const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-    // Sahibin UID'si — sen giriş yapınca Firestore'a bir kez yaz, misafir buradan okur
     const ownerSnap = await getDoc(doc(db, 'sagmal_meta', 'owner'));
     if (!ownerSnap.exists()) return;
     const ownerUID = ownerSnap.data().uid;
+    // Misafir: ilk işletmeyi göster
     const snap = await getDoc(doc(db, 'sagmal', ownerUID));
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
-      renderDashboard();
-      renderAnimals();
+      renderDashboard(); renderAnimals();
     }
   } catch(e) { console.log('Misafir veri okuma hatası:', e); }
 };
@@ -2881,26 +2960,74 @@ window.misafirFirebaseOku = async function() {
 window.cikisYap = function() {
   if (unsubscribe) unsubscribe();
   if (auth) signOut(auth);
+  activeIsletmeId = null;
   window.misafirMod = false;
+  document.getElementById('loginScreen').innerHTML = `
+    <div style="font-size:3rem;margin-bottom:16px;">🐄</div>
+    <h1 style="font-size:1.5rem;font-weight:700;color:var(--accent2);margin-bottom:8px;">Sağmal İnek</h1>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:32px;text-align:center;">Verilerinize her cihazdan erişmek için giriş yapın</p>
+    <div style="width:100%;max-width:300px;">
+      <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:1rem;margin-bottom:10px;outline:none;">
+      <input id="loginPassword" type="password" placeholder="Şifre" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:1rem;margin-bottom:10px;outline:none;">
+      <button onclick="emailGiris()" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">Giriş Yap</button>
+      <button onclick="emailKayit()" style="background:none;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;margin-bottom:8px;">İlk kez? Kayıt Ol</button>
+      <button onclick="misafirGiris()" style="background:none;color:var(--text2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:0.9rem;cursor:pointer;width:100%;">👁️ Misafir Olarak Gir</button>
+    </div>
+    <div id="loginError" style="color:var(--danger);font-size:0.82rem;margin-top:14px;text-align:center;max-width:300px;"></div>`;
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('appScreen').style.display='none';
   const ms = document.getElementById('misafirStyle');
   if (ms) ms.remove();
 };
 
+window.emailKayit = function() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPassword').value;
+  const err = document.getElementById('loginError');
+  if (!email||!pass) { err.textContent='E-posta ve şifre gerekli!'; return; }
+  if (pass.length < 6) { err.textContent='Şifre en az 6 karakter!'; return; }
+  err.textContent='Kayıt yapılıyor...';
+  createUserWithEmailAndPassword(auth, email, pass).catch(e => { err.textContent = e.message; });
+};
+
 if (auth) {
-  onAuthStateChanged(auth, user => {
+  onAuthStateChanged(auth, async user => {
     currentUser = user;
     if (user) {
       window.misafirMod = false;
-      document.getElementById('loginScreen').style.display='none';
-      document.getElementById('appScreen').style.display='block';
-      document.getElementById('headerSub').textContent = user.email;
-      document.getElementById('misafirBadge').style.display='none';
-      document.getElementById('ayarlarBtn').style.display='block';
-      // Sahibin UID'sini meta olarak kaydet
-      setDoc(doc(db, 'sagmal_meta', 'owner'), { uid: user.uid }).catch(()=>{});
-      startListening();
+
+      if (user.email === ADMIN_EMAIL) {
+        // Admin: işletme seçim ekranı
+        const isletmeler = await getIsletmeler();
+        if (isletmeler.length === 0) {
+          // İlk kez giriş — mevcut veriyi ilk işletme yap
+          const isletmeId = user.uid;
+          const mevcutSnap = await getDoc(doc(db, 'sagmal', user.uid)).catch(()=>null);
+          const mevcutAnimals = mevcutSnap?.exists() ? mevcutSnap.data().animals || [] : window.animals || [];
+          await setDoc(doc(db, 'isletmeler', isletmeId), {
+            ad: 'İşletmem', sahipUid: user.uid,
+            animals: mevcutAnimals, updatedAt: new Date().toISOString()
+          });
+          isletmeler.push({ id: isletmeId, ad: 'İşletmem', hayvanSayisi: mevcutAnimals.filter(a=>!a.durum||a.durum==='hayatta').length });
+        }
+        if (isletmeler.length === 1) {
+          // Tek işletme varsa direkt gir
+          window.isletmeyeGir(isletmeler[0].id, isletmeler[0].ad);
+        } else {
+          showIsletmeSecimEkrani(isletmeler);
+        }
+      } else {
+        // Normal kullanıcı: kendi işletmesine git
+        const isletmeId = user.uid;
+        const isletmeSnap = await getDoc(doc(db, 'isletmeler', isletmeId)).catch(()=>null);
+        if (!isletmeSnap?.exists()) {
+          // Yeni kullanıcı — boş işletme oluştur
+          await setDoc(doc(db, 'isletmeler', isletmeId), {
+            ad: user.email, sahipUid: user.uid, animals: [], updatedAt: new Date().toISOString()
+          });
+        }
+        window.isletmeyeGir(isletmeId, isletmeSnap?.data()?.ad || user.email);
+      }
     } else if (!window.misafirMod) {
       document.getElementById('loginScreen').style.display='flex';
       document.getElementById('appScreen').style.display='none';
