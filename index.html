@@ -2495,13 +2495,13 @@ function tohSablonIndir() {
   const wb = XLSX.utils.book_new();
 
   // Hayvanlar sheet
-  const hayvanBaslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum'];
+  const hayvanBaslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Laktasyon'];
   const hayvanOrnek = [
-    ['DE123456789','001','Bella','2022-03-15','2026-01-10','Holstein','fresh'],
-    ['NL987654321','002','','2021-06-20','','Simmental','gebe'],
+    ['DE123456789','001','Bella','2022-03-15','2026-01-10','Holstein','fresh', 2],
+    ['NL987654321','002','','2021-06-20','','Simmental','gebe', ''],
   ];
   const ws1 = XLSX.utils.aoa_to_sheet([hayvanBaslik, ...hayvanOrnek]);
-  ws1['!cols'] = [18,12,12,14,14,14,12].map(w=>({wch:w}));
+  ws1['!cols'] = [18,12,12,14,14,14,12,10].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws1, 'Hayvanlar');
 
   // Tohumlamalar sheet
@@ -2546,10 +2546,12 @@ async function importFromExcel(event) {
         let dogum='', sonDogum='';
         if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
         if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
+        const laktasyonVal = row[7] ? parseInt(row[7]) : null;
         animals.push({
           id:genId(), createdAt:Date.now(), kupe, isletme:String(row[1]||'').trim(),
           isim:String(row[2]||'').trim(), irk:String(row[5]||'').trim(),
-          dogum, sonDogum, repro:String(row[6]||'fresh').toLowerCase().trim()||'fresh',
+          dogum, sonDogum, repro:String(row[6]||'diger').toLowerCase().trim()||'diger',
+          laktasyon: laktasyonVal || 0,
           not:'', durum:'hayatta', vaccines:[], weights:[], milkRecords:[], tohumlamalar:[]
         });
         added++;
@@ -2590,6 +2592,11 @@ async function importFromExcel(event) {
           if (sonuc === 'gebe') { hayvan.repro = 'gebe'; }
           else if (sonuc === 'bekliyor' && !['gebe','kuru','closeup'].includes(hayvan.repro)) { hayvan.repro = 'tohumlu'; }
           tohAdded++;
+        }
+        // Laktasyon boşsa tohumlama kayıtlarından otomatik hesapla
+        if (!hayvan.laktasyon) {
+          const dogurdular = hayvan.tohumlamalar.filter(t => t.sonuc === 'dogurdu').length;
+          if (dogurdular > 0) hayvan.laktasyon = dogurdular;
         }
       }
     }
