@@ -1816,12 +1816,13 @@ function beklemeSuresiniKaydet() {
 
 function isletmeAyarlariKaydet() {
   const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
-  if (!isletmeId || !db) { showToast('İşletme bulunamadı!'); return; }
+  const database = window.db;
+  if (!isletmeId || !database) { showToast('İşletme bulunamadı!'); return; }
   const ad = document.getElementById('ay_isletme_ad').value.trim();
   const email = document.getElementById('ay_isletme_email').value.trim();
   if (!ad) { showToast('İşletme adı boş olamaz!'); return; }
   import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({updateDoc, doc: fDoc}) => {
-    updateDoc(fDoc(db, 'isletmeler', isletmeId), {
+    updateDoc(fDoc(database, 'isletmeler', isletmeId), {
       ad, sorumluEmail: email
     }).then(() => {
       document.getElementById('headerSub').textContent = ad;
@@ -1837,10 +1838,11 @@ function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
   document.getElementById('ayarlarToplam').textContent = aktif + ' hayvan';
   document.getElementById('ay_bekleme').value = getBeklemeSuresi();
-  // İşletme ayarlarını yükle
-  if (activeIsletmeId && db) {
+  const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
+  const database = window.db;
+  if (isletmeId && database) {
     import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({getDoc, doc: fDoc}) => {
-      getDoc(fDoc(db, 'isletmeler', activeIsletmeId)).then(snap => {
+      getDoc(fDoc(database, 'isletmeler', isletmeId)).then(snap => {
         if (snap.exists()) {
           document.getElementById('ay_isletme_ad').value = snap.data().ad || '';
           document.getElementById('ay_isletme_email').value = snap.data().sorumluEmail || '';
@@ -2967,6 +2969,7 @@ try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
+  window.db = db;
 } catch(e) { console.log('Firebase başlatılamadı'); }
 
 let currentUser = null;
