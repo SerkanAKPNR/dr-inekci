@@ -1815,12 +1815,13 @@ function beklemeSuresiniKaydet() {
 }
 
 function isletmeAyarlariKaydet() {
-  if (!activeIsletmeId || !db) { showToast('İşletme bulunamadı!'); return; }
+  const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
+  if (!isletmeId || !db) { showToast('İşletme bulunamadı!'); return; }
   const ad = document.getElementById('ay_isletme_ad').value.trim();
   const email = document.getElementById('ay_isletme_email').value.trim();
   if (!ad) { showToast('İşletme adı boş olamaz!'); return; }
   import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({updateDoc, doc: fDoc}) => {
-    updateDoc(fDoc(db, 'isletmeler', activeIsletmeId), {
+    updateDoc(fDoc(db, 'isletmeler', isletmeId), {
       ad, sorumluEmail: email
     }).then(() => {
       document.getElementById('headerSub').textContent = ad;
@@ -1828,7 +1829,7 @@ function isletmeAyarlariKaydet() {
       const barAd = document.getElementById('isletmeBarAd');
       if (barAd) barAd.textContent = '🏡 ' + ad;
       showToast('✓ İşletme ayarları kaydedildi!');
-    });
+    }).catch(e => showToast('Hata: ' + e.message));
   });
 }
 
@@ -2971,6 +2972,7 @@ try {
 let currentUser = null;
 let unsubscribe = null;
 let activeIsletmeId = null; // Şu an hangi işletmenin verisi gösteriliyor
+window.activeIsletmeId = null;
 
 // ===== KAYDET =====
 async function saveToFirebase() {
@@ -3019,6 +3021,7 @@ function showIsletmeSecimEkrani(isletmeler) {
 
 window.isletmeyeGir = async function(isletmeId, isletmeAd) {
   activeIsletmeId = isletmeId;
+  window.activeIsletmeId = isletmeId;
   localStorage.setItem('aktif_isletme_id', isletmeId);
   localStorage.setItem('aktif_isletme_ad', isletmeAd);
   document.getElementById('loginScreen').style.display = 'none';
