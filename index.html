@@ -159,6 +159,10 @@ canvas { max-width: 100%; }
   </div>
 </div>
 
+<div id="isletmeBar" style="display:none;background:var(--surface2);border-bottom:1px solid var(--border);padding:6px 16px;text-align:center;">
+  <span id="isletmeBarAd" style="font-size:0.82rem;font-weight:700;color:var(--accent2);font-family:'JetBrains Mono',monospace;letter-spacing:1px;cursor:pointer;" onclick="showPage('ayarlar')" title="Değiştirmek için tıkla">🏡 —</span>
+</div>
+
 <nav class="nav">
   <button class="nav-btn active" onclick="showPage('dashboard')">Ana Sayfa</button>
   <button class="nav-btn" onclick="showPage('animals')">Hayvanlar</button>
@@ -1821,6 +1825,8 @@ function isletmeAyarlariKaydet() {
     }).then(() => {
       document.getElementById('headerSub').textContent = ad;
       localStorage.setItem('aktif_isletme_ad', ad);
+      const barAd = document.getElementById('isletmeBarAd');
+      if (barAd) barAd.textContent = '🏡 ' + ad;
       showToast('✓ İşletme ayarları kaydedildi!');
     });
   });
@@ -3018,6 +3024,10 @@ window.isletmeyeGir = async function(isletmeId, isletmeAd) {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('headerSub').textContent = isletmeAd;
+  // İşletme bar'ını güncelle
+  const bar = document.getElementById('isletmeBar');
+  const barAd = document.getElementById('isletmeBarAd');
+  if (bar && barAd) { bar.style.display='block'; barAd.textContent = '🏡 ' + isletmeAd; }
   document.getElementById('misafirBadge').style.display = 'none';
   document.getElementById('ayarlarBtn').style.display = 'block';
 
