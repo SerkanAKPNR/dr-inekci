@@ -898,11 +898,16 @@ function otomatikKategori(dogum, cinsiyet, mevcutRepro) {
 
 function formatKupe(raw) {
   if (!raw) return '';
-  let s = raw.toUpperCase().replace(/[\s\-]/g, '');
+  let s = raw.toUpperCase().trim().replace(/\s+/g, ' ');
+  // Yabancı ülke kodu varsa (2 harf ile başlıyor ama TR değil) — olduğu gibi bırak
+  const yabanciUlke = s.match(/^([A-Z]{2})\s*(\d.*)$/);
+  if (yabanciUlke && !s.startsWith('TR')) {
+    return yabanciUlke[1] + yabanciUlke[2].replace(/\s/g, '');
+  }
+  // TR formatı
+  s = s.replace(/[\s\-]/g, '');
   if (!s.startsWith('TR')) s = 'TR15' + s;
-  // TR'den sonraki rakamları al
   let nums = s.slice(2).replace(/\D/g, '');
-  // İlk 2 rakam il kodu, kalan 10 rakam
   const il = nums.slice(0, 2) || '15';
   const kalan = nums.slice(2).padStart(10, '0').slice(-10);
   return 'TR' + il + kalan;
