@@ -308,6 +308,7 @@ canvas { max-width: 100%; }
     <button class="btn" onclick="disaAktar()" style="width:100%;padding:14px;font-size:1rem;">📤 Verileri Dışa Aktar (Excel)</button>
     <button class="btn btn-outline" onclick="rapelExcel()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--tohumlu);color:var(--tohumlu);">💉 Aşı Rapel Listesi (Excel)</button>
     <button class="btn btn-outline" onclick="senkronRaporExcel()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--gebe);color:var(--gebe);">🔄 Senkron Adımları (Excel)</button>
+    <button class="btn btn-outline" onclick="tohSablonIndir()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--gebe);color:var(--gebe);">🐂 Tohumlama Şablonu İndir</button>
     <button class="btn btn-outline" onclick="document.getElementById('excelImport2').click()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--accent);color:var(--accent);">📊 Excel'den İçe Aktar</button>
     <input type="file" id="excelImport2" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
     <div style="height:1px;background:var(--border);margin:4px 0;"></div>
@@ -2489,6 +2490,24 @@ function addToCalendar(animalId, vaccineIdx) {
 function addAllRemindersToCalendar() { showToast('Takvim özelliği yakında!'); }
 
 // ===== EXCEL =====
+function tohSablonIndir() {
+  if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
+  const wb = XLSX.utils.book_new();
+  const baslik = ['Küpe No'];
+  for (let i = 1; i <= 7; i++) {
+    baslik.push(`Toh.Tarihi ${i}`, `Boğa Adı ${i}`, `Boğa No ${i}`, `Sonuç ${i}`, `Beklenen Doğum ${i}`);
+  }
+  const ornek = [
+    ['DE123456789', '2026-01-10', 'Max', 'DE001', 'bos', '', '2026-02-15', 'Luna', 'DE002', 'gebe', '2026-11-20', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['NL987654321', '2026-02-01', '', '', 'bekliyor', '2026-11-12', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
+  ws['!cols'] = [18, ...Array(35).fill({wch:14})];
+  XLSX.utils.book_append_sheet(wb, ws, 'Tohumlamalar');
+  XLSX.writeFile(wb, `tohumlama_sablonu.xlsx`);
+  showToast('✓ Şablon indirildi!');
+}
+
 async function importFromExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -2498,7 +2517,9 @@ async function importFromExcel(event) {
   try {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, {type:'array', cellDates:true});
-    let added=0, skipped=0;
+    let added=0, skipped=0, tohAdded=0;
+
+    // Hayvanlar sheet
     if (wb.SheetNames.includes('Hayvanlar')) {
       const ws = wb.Sheets['Hayvanlar'];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
@@ -2521,10 +2542,53 @@ async function importFromExcel(event) {
         added++;
       }
     }
+
+    // Tohumlamalar sheet — yan yana sütun formatı
+    if (wb.SheetNames.includes('Tohumlamalar')) {
+      const ws = wb.Sheets['Tohumlamalar'];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      const startRow = rows[0] && String(rows[0][0]||'').toLowerCase().includes('küpe') ? 1 : 0;
+      for (let i=startRow; i<rows.length; i++) {
+        const row = rows[i];
+        const kupeRaw = String(row[0]||'').trim();
+        if (!kupeRaw) continue;
+        const kupe = formatKupe(kupeRaw);
+        const hayvan = animals.find(a => a.kupe===kupe);
+        if (!hayvan) continue;
+        if (!hayvan.tohumlamalar) hayvan.tohumlamalar = [];
+        // Her 5 sütun bir tohumlama: tarih, bogaAd, bogaNo, sonuc, beklenenDogum
+        for (let t=0; t<7; t++) {
+          const base = 1 + t * 5;
+          const tarih = row[base] instanceof Date ? row[base].toISOString().slice(0,10) : String(row[base]||'').slice(0,10);
+          if (!tarih || tarih.length < 8) continue;
+          const beklenen = row[base+4] instanceof Date ? row[base+4].toISOString().slice(0,10) : String(row[base+4]||'').slice(0,10);
+          const sonuc = String(row[base+3]||'bekliyor').toLowerCase().trim() || 'bekliyor';
+          // Aynı tarihli kayıt varsa ekleme
+          if (hayvan.tohumlamalar.find(x => x.tarih===tarih)) continue;
+          hayvan.tohumlamalar.push({
+            tarih,
+            bogaAd: String(row[base+1]||'').trim(),
+            bogaNo: String(row[base+2]||'').trim(),
+            sonuc,
+            beklenenDogum: beklenen || '',
+            not: ''
+          });
+          // Repro güncelle — son tohumlama sonucuna göre
+          if (sonuc === 'gebe') { hayvan.repro = 'gebe'; }
+          else if (sonuc === 'bekliyor' && !['gebe','kuru','closeup'].includes(hayvan.repro)) { hayvan.repro = 'tohumlu'; }
+          tohAdded++;
+        }
+      }
+    }
+
     save(); renderAnimals(); renderDashboard();
-    const msg = `<span style="color:var(--accent)">✓ ${added} hayvan eklendi</span>${skipped?` <span style="color:var(--warn)">• ${skipped} zaten vardı</span>`:''}`;
+    let msg = '';
+    if (added) msg += `<span style="color:var(--accent)">✓ ${added} hayvan eklendi</span> `;
+    if (tohAdded) msg += `<span style="color:var(--tohumlu)">• ${tohAdded} tohumlama eklendi</span> `;
+    if (skipped) msg += `<span style="color:var(--warn)">• ${skipped} zaten vardı</span>`;
+    if (!msg) msg = '<span style="color:var(--warn)">Eklenecek yeni veri bulunamadı</span>';
     if (result) result.innerHTML = msg;
-    showToast(`${added} hayvan eklendi`);
+    showToast(`${added} hayvan, ${tohAdded} tohumlama eklendi`);
   } catch(e) { if (result) result.innerHTML=`<span style="color:var(--danger)">⚠️ Hata: ${e.message}</span>`; }
   event.target.value='';
 }
