@@ -1120,6 +1120,10 @@ function renderDashboard() {
       <div class="stat-num" style="color:var(--accent);font-size:1.2rem;">${ortSGS ?? '—'}</div>
       <div class="stat-label">Ort.SGS</div>
     </div>
+    <div class="stat-card" onclick="filterAndShow('hepsi')" style="border-color:var(--text2);">
+      <div class="stat-num" style="color:var(--text);">${aktif.length}</div>
+      <div class="stat-label">Toplam</div>
+    </div>
   `;
   document.getElementById('headerSub').textContent = `Toplam ${aktif.length} aktif hayvan`;
 
