@@ -2493,17 +2493,30 @@ function addAllRemindersToCalendar() { showToast('Takvim özelliği yakında!');
 function tohSablonIndir() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
+
+  // Hayvanlar sheet
+  const hayvanBaslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum'];
+  const hayvanOrnek = [
+    ['DE123456789','001','Bella','2022-03-15','2026-01-10','Holstein','fresh'],
+    ['NL987654321','002','','2021-06-20','','Simmental','gebe'],
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet([hayvanBaslik, ...hayvanOrnek]);
+  ws1['!cols'] = [18,12,12,14,14,14,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws1, 'Hayvanlar');
+
+  // Tohumlamalar sheet
   const baslik = ['Küpe No'];
   for (let i = 1; i <= 7; i++) {
     baslik.push(`Toh.Tarihi ${i}`, `Boğa Adı ${i}`, `Boğa No ${i}`, `Sonuç ${i}`, `Beklenen Doğum ${i}`);
   }
   const ornek = [
-    ['DE123456789', '2026-01-10', 'Max', 'DE001', 'bos', '', '2026-02-15', 'Luna', 'DE002', 'gebe', '2026-11-20', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-    ['NL987654321', '2026-02-01', '', '', 'bekliyor', '2026-11-12', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['DE123456789', '2025-10-01', 'Max', 'DE001', 'bos', '', '2025-11-15', 'Luna', 'DE002', 'gebe', '2026-08-20'],
+    ['NL987654321', '2025-09-01', '', '', 'bos', '', '2025-10-10', '', '', 'bos', '', '2025-11-20', '', '', 'gebe', '2026-08-30'],
   ];
-  const ws = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
-  ws['!cols'] = [18, ...Array(35).fill({wch:14})];
-  XLSX.utils.book_append_sheet(wb, ws, 'Tohumlamalar');
+  const ws2 = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
+  ws2['!cols'] = [18, ...Array(35).fill({wch:14})];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Tohumlamalar');
+
   XLSX.writeFile(wb, `tohumlama_sablonu.xlsx`);
   showToast('✓ Şablon indirildi!');
 }
