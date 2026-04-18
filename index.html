@@ -136,6 +136,7 @@ canvas { max-width: 100%; }
     <input id="loginEmail" type="email" placeholder="E-posta" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
     <input id="loginPassword" type="password" placeholder="Şifre" style="width:100%;background:#ffffff;border:1px solid #c8d8e8;border-radius:8px;padding:12px;color:#1a2e3a;font-size:1rem;margin-bottom:10px;outline:none;">
     <button onclick="emailGiris()" style="background:#2a8fa8;color:#ffffff;border:none;border-radius:10px;padding:14px;font-size:1rem;font-weight:700;cursor:pointer;width:100%;margin-bottom:8px;">Giriş Yap</button>
+    <button onclick="sifremiUnuttum()" style="background:none;color:#5a7a8a;border:none;font-size:0.82rem;cursor:pointer;width:100%;margin-bottom:8px;padding:4px;">🔑 Şifremi Unuttum</button>
     <div style="display:flex;align-items:center;gap:8px;margin:8px 0;">
       <div style="flex:1;height:1px;background:#c8d8e8;"></div>
       <span style="color:#5a7a8a;font-size:0.78rem;">veya</span>
@@ -3086,6 +3087,17 @@ async function getIsletmeler() {
 }
 
 window._firebaseSave = function(data) { window.animals = data; saveToFirebase(); };
+
+window.sifremiUnuttum = function() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const err = document.getElementById('loginError');
+  if (!email) { err.textContent = 'Önce e-posta adresinizi girin!'; err.style.color='#e05a3a'; return; }
+  import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then(({sendPasswordResetEmail}) => {
+    sendPasswordResetEmail(auth, email)
+      .then(() => { err.textContent = '✓ Şifre sıfırlama linki gönderildi!'; err.style.color='#1f9e60'; })
+      .catch(e => { err.textContent = e.code==='auth/user-not-found'?'Bu e-posta kayıtlı değil!':e.message; err.style.color='#e05a3a'; });
+  });
+};
 
 window.emailGiris = function() {
   const email = document.getElementById('loginEmail').value.trim();
