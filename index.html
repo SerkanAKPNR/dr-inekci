@@ -3043,6 +3043,10 @@ window.isletmeyeGir = async function(isletmeId, isletmeAd) {
   window.activeIsletmeId = isletmeId;
   localStorage.setItem('aktif_isletme_id', isletmeId);
   localStorage.setItem('aktif_isletme_ad', isletmeAd);
+  // İşletme değişince hayvanları sıfırla
+  window.animals = [];
+  animals = [];
+  localStorage.removeItem('sagmal_animals');
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('headerSub').textContent = isletmeAd;
