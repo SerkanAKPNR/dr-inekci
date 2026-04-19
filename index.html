@@ -2561,10 +2561,25 @@ async function importFromExcel(event) {
         if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
         if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
         const laktasyonVal = row[7] ? parseInt(row[7]) : null;
+        
+        // Repro otomatik hesapla
+        let repro = String(row[6]||'').toLowerCase().trim();
+        if (!repro || repro === 'diger' || repro === '') {
+          if (sonDogum) {
+            repro = 'fresh'; // Son doğum var → fresh
+          } else if (laktasyonVal && laktasyonVal > 0) {
+            repro = 'acik'; // Laktasyon var ama son doğum yok → açık
+          } else {
+            repro = 'gebeduve'; // Laktasyon yok, doğum yok → gebe düve
+          }
+        } else if (!sonDogum && (laktasyonVal === 0 || !laktasyonVal) && !['duve','buzagi','dana','tosun','boga'].includes(repro)) {
+          repro = 'gebeduve'; // Repro girilmiş ama doğum/laktasyon yok → gebe düve
+        }
+
         animals.push({
           id:genId(), createdAt:Date.now(), kupe, isletme:String(row[1]||'').trim(),
           isim:String(row[2]||'').trim(), irk:String(row[5]||'').trim(),
-          dogum, sonDogum, repro:String(row[6]||'diger').toLowerCase().trim()||'diger',
+          dogum, sonDogum, repro,
           laktasyon: laktasyonVal || 0,
           not:'', durum:'hayatta', vaccines:[], weights:[], milkRecords:[], tohumlamalar:[]
         });
@@ -2985,7 +3000,7 @@ async function saveToFirebase() {
     await setDoc(doc(db, 'isletmeler', activeIsletmeId), {
       animals: JSON.parse(JSON.stringify(window.animals)),
       updatedAt: new Date().toISOString()
-    });
+    }, { merge: true });
   } catch(e) { console.error('Kayıt hatası:', e); }
 }
 
