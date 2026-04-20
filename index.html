@@ -1232,9 +1232,10 @@ function animalCard(a) {
   // Doğuma kalan güne göre border rengi
   let borderStyle = '';
   if (['gebe','kuru','closeup','gebeduve'].includes(repro)) {
-    const toh = (a.tohumlamalar||[]).find(t => t.beklenenDogum && (t.sonuc==='gebe'||t.sonuc==='bekliyor'));
+    const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
     if (toh) {
-      const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
+      const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+      const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
       if (kalan <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
       else if (kalan <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
       else borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;';
@@ -1344,12 +1345,13 @@ function renderDetail() {
     ${(() => {
       const gebeStatuleri = ['gebe','kuru','closeup','gebeduve'];
       if (!gebeStatuleri.includes(a.repro)) return '';
-      const sonTohGebe = (a.tohumlamalar||[]).filter(t => t.beklenenDogum && (t.sonuc==='gebe'||t.sonuc==='bekliyor')).pop();
+      const sonTohGebe = (a.tohumlamalar||[]).filter(t => (t.sonuc==='gebe'||t.sonuc==='bekliyor')).pop();
       if (!sonTohGebe) return '';
-      const kalan = Math.round((new Date(sonTohGebe.beklenenDogum) - new Date()) / 86400000);
+      const beklenen = sonTohGebe.beklenenDogum || addGun(sonTohGebe.tarih, 280);
+      const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
       const renk = kalan <= 20 ? 'var(--danger)' : kalan <= 60 ? 'var(--warn)' : 'var(--fresh)';
       const label = kalan < 0 ? `${Math.abs(kalan)} gün geçti!` : kalan === 0 ? 'Bugün!' : `${kalan} gün kaldı`;
-      return `<div class="detail-row"><span class="detail-key">Tahmini Doğum</span><span class="detail-val" style="color:${renk};font-weight:700;">${label} <span style="color:var(--text2);font-weight:400;font-size:0.75rem;">(${sonTohGebe.beklenenDogum})</span></span></div>`;
+      return `<div class="detail-row"><span class="detail-key">Tahmini Doğum</span><span class="detail-val" style="color:${renk};font-weight:700;">${label} <span style="color:var(--text2);font-weight:400;font-size:0.75rem;">(${beklenen})</span></span></div>`;
     })()}
     ${tohlar.length > 0 ? `
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
@@ -2308,10 +2310,11 @@ function saveToh() {
   const a = animals.find(x => x.id === currentAnimalId);
   if (!a) return;
   if (!a.tohumlamalar) a.tohumlamalar = [];
+  const beklenen = document.getElementById('toh_dogum').value || addGun(tarih, 280);
   a.tohumlamalar.push({
     tarih, bogaAd: document.getElementById('toh_boga_ad').value.trim(),
     bogaNo: document.getElementById('toh_boga_no').value.trim(),
-    beklenenDogum: document.getElementById('toh_dogum').value,
+    beklenenDogum: beklenen,
     sonuc: document.getElementById('toh_sonuc').value,
     not: document.getElementById('toh_not').value.trim()
   });
