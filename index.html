@@ -2519,7 +2519,7 @@ function tohSablonIndir() {
     ['NL987654321','002','','2021-06-20','','Simmental','gebe','', '2025-09-01','','','bos','', '2025-10-10','','','bos','', '2025-11-20','','','gebe','2026-08-30'],
   ];
   const ws = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
-  ws['!cols'] = [18,12,12,14,14,14,12,10, ...Array(35).fill({wch:14})];
+  ws['!cols'] = [18,12,12,14,14,14,12,10, ...Array(35).fill(14)].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, ws, 'Tohumlama');
 
   XLSX.writeFile(wb, `tohumlama_sablonu.xlsx`);
