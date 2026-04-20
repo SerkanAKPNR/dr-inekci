@@ -2197,13 +2197,13 @@ function saveEdit(silent=false) {
   a.cinsiyet = document.getElementById('e_cinsiyet').value;
   a.dogum = document.getElementById('e_dogum').value;
   const yeniSonDogum = document.getElementById('e_sonDogum').value;
-  // Yeni son doğum tarihi girildiyse ve daha önce yoksa → fresh yap
-  if (yeniSonDogum && !a.sonDogum) {
+  a.sonDogum = yeniSonDogum;
+  a.repro = document.getElementById('e_repro').value;
+  // sonDogum girilmiş/değişmişse ve repro hâlâ tohumlu/gebeduve'deyse → fresh yap
+  if (yeniSonDogum && ['tohumlu','gebeduve'].includes(a.repro)) {
     a.repro = 'fresh';
     document.getElementById('e_repro').value = 'fresh';
   }
-  a.sonDogum = yeniSonDogum;
-  a.repro = document.getElementById('e_repro').value;
   const yeniDurum = document.getElementById('e_durum').value;
   a.durum = yeniDurum;
   if (yeniDurum !== 'hayatta') { a.durumTarih = document.getElementById('e_durum_tarih').value||today(); a.durumNot = document.getElementById('e_durum_not').value.trim(); }
@@ -3062,6 +3062,10 @@ function startListening() {
           // Hatalı gebe inek: repro=gebe ama ne sonDogum ne laktasyon var → gebe düve yap
           if (a.repro === 'gebe' && (!a.laktasyon || a.laktasyon === 0) && !a.sonDogum) {
             a.repro = 'gebeduve'; degisti = true;
+          }
+          // sonDogum var ama repro hâlâ tohumlu → fresh yap (gebe'ye dokunma, eski doğum tarihi olabilir)
+          if (a.sonDogum && a.repro === 'tohumlu') {
+            a.repro = 'fresh'; degisti = true;
           }
         });
         if (degisti) {
