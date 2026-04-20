@@ -317,6 +317,9 @@ canvas { max-width: 100%; }
     <button class="btn btn-outline" onclick="document.getElementById('excelImport2').click()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--accent);color:var(--accent);">📊 Excel'den İçe Aktar</button>
     <input type="file" id="excelImport2" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
     <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+    <button class="btn btn-outline" onclick="reproTopluDuzelt()" id="btnReproDuzelt" style="width:100%;padding:14px;font-size:1rem;border-color:#e07a10;color:#e07a10;">🔧 Laktasyonsuz Gebe İnekleri Gebe Düveye Dönüştür</button>
+    <div id="reproDuzeltResult" style="display:none;padding:10px;border-radius:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;margin-top:-4px;"></div>
+    <div style="height:1px;background:var(--border);margin:4px 0;"></div>
     <button class="btn btn-outline" onclick="tohGeriYukle()" id="btnTohGeriYukle" style="width:100%;padding:14px;font-size:1rem;border-color:#e07a10;color:#e07a10;">🔁 Tohumlama Verilerini Geri Yükle</button>
     <div id="tohGeriYukleResult" style="display:none;padding:10px;border-radius:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;margin-top:-4px;"></div>
     <div style="height:1px;background:var(--border);margin:4px 0;"></div>
@@ -2392,7 +2395,7 @@ function saveMuayene(sonuc) {
 
   // Repro durumunu güncelle
   if (sonuc === 'gebe') {
-    a.repro = 'gebe';
+    a.repro = (a.laktasyon && a.laktasyon > 0) ? 'gebe' : 'gebeduve';
     showToast('✅ Gebelik teyit edildi');
   } else if (sonuc === 'bos') {
     a.repro = 'acik';
@@ -2621,8 +2624,8 @@ async function importFromExcel(event) {
             not: ''
           });
           // Repro güncelle — son tohumlama sonucuna göre
-          if (sonuc === 'gebe') { hayvan.repro = 'gebe'; }
-          else if (sonuc === 'bekliyor' && !['gebe','kuru','closeup'].includes(hayvan.repro)) { hayvan.repro = 'tohumlu'; }
+          if (sonuc === 'gebe') { hayvan.repro = (hayvan.laktasyon && hayvan.laktasyon > 0) ? 'gebe' : 'gebeduve'; }
+          else if (sonuc === 'bekliyor' && !['gebe','kuru','closeup','gebeduve'].includes(hayvan.repro)) { hayvan.repro = 'tohumlu'; }
           tohAdded++;
         }
         // Laktasyon boşsa tohumlama kayıtlarından otomatik hesapla
@@ -3108,6 +3111,35 @@ async function getIsletmeler() {
 }
 
 window._firebaseSave = function(data) { window.animals = data; saveToFirebase(); };
+
+// ===== REPRO TOPLU DÜZELT =====
+window.reproTopluDuzelt = async function() {
+  const btn = document.getElementById('btnReproDuzelt');
+  const res = document.getElementById('reproDuzeltResult');
+  const etkilenen = animals.filter(a => a.repro === 'gebe' && (!a.laktasyon || a.laktasyon === 0));
+  if (etkilenen.length === 0) {
+    res.style.display = 'block';
+    res.style.background = 'rgba(58,114,200,0.1)';
+    res.style.color = 'var(--tohumlu)';
+    res.textContent = 'ℹ️ Düzeltilecek hayvan bulunamadı. Tüm kayıtlar doğru görünüyor.';
+    return;
+  }
+  if (!confirm(etkilenen.length + ' hayvan "Gebe İnek" olarak kayıtlı ama laktasyonu yok.\nBunlar "Gebe Düve" olarak düzeltilecek.\n\nDevam etmek istiyor musunuz?')) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Düzeltiliyor...';
+  etkilenen.forEach(a => { a.repro = 'gebeduve'; });
+  localStorage.setItem('sagmal_animals', JSON.stringify(animals));
+  await saveToFirebase();
+  res.style.display = 'block';
+  res.style.background = 'rgba(31,158,96,0.1)';
+  res.style.color = 'var(--fresh)';
+  res.textContent = '✓ ' + etkilenen.length + ' hayvan Gebe Düveye dönüştürüldü.';
+  btn.textContent = '✓ Tamamlandı';
+  btn.style.borderColor = 'var(--fresh)';
+  btn.style.color = 'var(--fresh)';
+  renderDashboard();
+  if (window.currentPage === 'animals') renderAnimals();
+};
 
 // ===== TOHUMLAMA GERİ YÜKLEME =====
 window.tohGeriYukle = async function() {
