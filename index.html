@@ -2535,7 +2535,7 @@ async function importFromExcel(event) {
   try {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, {type:'array', cellDates:true});
-    let added=0, skipped=0, tohAdded=0;
+    let added=0, updated=0, tohAdded=0;
 
     // Hayvanlar sheet
     if (wb.SheetNames.includes('Hayvanlar')) {
@@ -2547,34 +2547,47 @@ async function importFromExcel(event) {
         const kupeRaw = String(row[0]||'').trim();
         if (!kupeRaw || kupeRaw.toLowerCase().includes('küpe')) continue;
         const kupe = formatKupe(kupeRaw);
-        if (animals.find(a => a.kupe===kupe)) { skipped++; continue; }
         let dogum='', sonDogum='';
         if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
         if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
         const laktasyonVal = row[7] ? parseInt(row[7]) : null;
-        
-        // Repro otomatik hesapla
+        const cinsiyet = String(row[8]||'disi').toLowerCase().trim() || 'disi';
+        const notVal = String(row[9]||'').trim();
+        const durumVal = String(row[10]||'hayatta').toLowerCase().trim() || 'hayatta';
+
+        // Repro otomatik hesapla — sadece boşsa
         let repro = String(row[6]||'').toLowerCase().trim();
-        if (!repro || repro === 'diger' || repro === '') {
-          if (sonDogum) {
-            repro = 'fresh'; // Son doğum var → fresh
-          } else if (laktasyonVal && laktasyonVal > 0) {
-            repro = 'acik'; // Laktasyon var ama son doğum yok → açık
-          } else {
-            repro = 'gebeduve'; // Laktasyon yok, doğum yok → gebe düve
-          }
-        } else if (!sonDogum && (laktasyonVal === 0 || !laktasyonVal) && !['duve','buzagi','dana','tosun','boga'].includes(repro)) {
-          repro = 'gebeduve'; // Repro girilmiş ama doğum/laktasyon yok → gebe düve
+        if (!repro) {
+          if (sonDogum) repro = 'fresh';
+          else if (laktasyonVal && laktasyonVal > 0) repro = 'acik';
+          else repro = 'gebeduve';
         }
 
-        animals.push({
-          id:genId(), createdAt:Date.now(), kupe, isletme:String(row[1]||'').trim(),
-          isim:String(row[2]||'').trim(), irk:String(row[5]||'').trim(),
-          dogum, sonDogum, repro,
-          laktasyon: laktasyonVal || 0,
-          not:'', durum:'hayatta', vaccines:[], weights:[], milkRecords:[], tohumlamalar:[]
-        });
-        added++;
+        const mevcut = animals.find(a => a.kupe===kupe);
+        if (mevcut) {
+          // Mevcut hayvanı güncelle — aşı, süt, tohumlama kayıtlarına dokunma
+          mevcut.isletme = String(row[1]||'').trim() || mevcut.isletme;
+          mevcut.isim    = String(row[2]||'').trim() || mevcut.isim;
+          mevcut.irk     = String(row[5]||'').trim() || mevcut.irk;
+          if (dogum) mevcut.dogum = dogum;
+          if (sonDogum) mevcut.sonDogum = sonDogum;
+          mevcut.repro   = repro || mevcut.repro;
+          if (laktasyonVal !== null) mevcut.laktasyon = laktasyonVal;
+          mevcut.cinsiyet = cinsiyet || mevcut.cinsiyet;
+          if (notVal) mevcut.not = notVal;
+          mevcut.durum   = durumVal || mevcut.durum;
+          updated++;
+        } else {
+          animals.push({
+            id:genId(), createdAt:Date.now(), kupe, isletme:String(row[1]||'').trim(),
+            isim:String(row[2]||'').trim(), irk:String(row[5]||'').trim(),
+            dogum, sonDogum, repro,
+            laktasyon: laktasyonVal || 0,
+            cinsiyet, not: notVal, durum: durumVal,
+            vaccines:[], weights:[], milkRecords:[], tohumlamalar:[]
+          });
+          added++;
+        }
       }
     }
 
@@ -2624,11 +2637,11 @@ async function importFromExcel(event) {
     save(); renderAnimals(); renderDashboard();
     let msg = '';
     if (added) msg += `<span style="color:var(--accent)">✓ ${added} hayvan eklendi</span> `;
+    if (updated) msg += `<span style="color:var(--fresh)">• ${updated} hayvan güncellendi</span> `;
     if (tohAdded) msg += `<span style="color:var(--tohumlu)">• ${tohAdded} tohumlama eklendi</span> `;
-    if (skipped) msg += `<span style="color:var(--warn)">• ${skipped} zaten vardı</span>`;
-    if (!msg) msg = '<span style="color:var(--warn)">Eklenecek yeni veri bulunamadı</span>';
+    if (!msg) msg = '<span style="color:var(--warn)">Eklenecek veya güncellenecek veri bulunamadı</span>';
     if (result) result.innerHTML = msg;
-    showToast(`${added} hayvan, ${tohAdded} tohumlama eklendi`);
+    showToast(`${added} eklendi, ${updated} güncellendi, ${tohAdded} tohumlama eklendi`);
   } catch(e) { if (result) result.innerHTML=`<span style="color:var(--danger)">⚠️ Hata: ${e.message}</span>`; }
   event.target.value='';
 }
@@ -2854,8 +2867,8 @@ function senkronRaporExcel() {
 function disaAktar() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
-  const hayvanlarData = [['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Not','Durum']];
-  animals.forEach(a => hayvanlarData.push([a.kupe||'',a.isletme||'',a.isim||'',a.dogum||'',a.sonDogum||'',a.irk||'',a.repro||'',a.not||'',a.durum||'hayatta']));
+  const hayvanlarData = [['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Laktasyon','Cinsiyet','Not','Durum']];
+  animals.forEach(a => hayvanlarData.push([a.kupe||'',a.isletme||'',a.isim||'',a.dogum||'',a.sonDogum||'',a.irk||'',a.repro||'',a.laktasyon||0,a.cinsiyet||'disi',a.not||'',a.durum||'hayatta']));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hayvanlarData), 'Hayvanlar');
   const asiData = [['Küpe No','Aşı/İlaç','Tarih','Periyot','Not']];
   animals.forEach(a => (a.vaccines||[]).forEach(v => asiData.push([a.kupe,v.isim,v.tarih,v.periyot||'',v.not||''])));
