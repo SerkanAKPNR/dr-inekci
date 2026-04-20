@@ -317,11 +317,6 @@ canvas { max-width: 100%; }
     <button class="btn btn-outline" onclick="document.getElementById('excelImport2').click()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--accent);color:var(--accent);">📊 Excel'den İçe Aktar</button>
     <input type="file" id="excelImport2" accept=".xlsx,.xls" style="display:none" onchange="importFromExcel(event)">
     <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-    <button class="btn btn-outline" onclick="reproTopluDuzelt()" id="btnReproDuzelt" style="width:100%;padding:14px;font-size:1rem;border-color:#e07a10;color:#e07a10;">🔧 Laktasyonsuz Gebe İnekleri Gebe Düveye Dönüştür</button>
-    <div id="reproDuzeltResult" style="display:none;padding:10px;border-radius:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;margin-top:-4px;"></div>
-    <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-    <button class="btn btn-outline" onclick="tohGeriYukle()" id="btnTohGeriYukle" style="width:100%;padding:14px;font-size:1rem;border-color:#e07a10;color:#e07a10;">🔁 Tohumlama Verilerini Geri Yükle</button>
-    <div id="tohGeriYukleResult" style="display:none;padding:10px;border-radius:8px;font-size:0.8rem;font-family:'JetBrains Mono',monospace;margin-top:-4px;"></div>
     <div style="height:1px;background:var(--border);margin:4px 0;"></div>
     <button class="btn btn-outline" onclick="cikisYap()" style="width:100%;padding:14px;font-size:1rem;">🚪 Çıkış Yap</button>
     <button class="btn btn-outline" onclick="tumVerileriSil()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--danger);color:var(--danger);">🗑️ Tüm Verileri Sil</button>
@@ -2514,28 +2509,18 @@ function tohSablonIndir() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
 
-  // Hayvanlar sheet
-  const hayvanBaslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Laktasyon'];
-  const hayvanOrnek = [
-    ['DE123456789','001','Bella','2022-03-15','2026-01-10','Holstein','fresh', 2],
-    ['NL987654321','002','','2021-06-20','','Simmental','gebe', ''],
-  ];
-  const ws1 = XLSX.utils.aoa_to_sheet([hayvanBaslik, ...hayvanOrnek]);
-  ws1['!cols'] = [18,12,12,14,14,14,12,10].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws1, 'Hayvanlar');
-
-  // Tohumlamalar sheet
-  const baslik = ['Küpe No'];
+  // Tek sayfa: Hayvan bilgisi + Tohumlamalar yan yana
+  const baslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Laktasyon'];
   for (let i = 1; i <= 7; i++) {
     baslik.push(`Toh.Tarihi ${i}`, `Boğa Adı ${i}`, `Boğa No ${i}`, `Sonuç ${i}`, `Beklenen Doğum ${i}`);
   }
   const ornek = [
-    ['DE123456789', '2025-10-01', 'Max', 'DE001', 'bos', '', '2025-11-15', 'Luna', 'DE002', 'gebe', '2026-08-20'],
-    ['NL987654321', '2025-09-01', '', '', 'bos', '', '2025-10-10', '', '', 'bos', '', '2025-11-20', '', '', 'gebe', '2026-08-30'],
+    ['DE123456789','001','Bella','2022-03-15','2026-01-10','Holstein','fresh',2, '2025-10-01','Max','DE001','bos','', '2025-11-15','Luna','DE002','gebe','2026-08-20'],
+    ['NL987654321','002','','2021-06-20','','Simmental','gebe','', '2025-09-01','','','bos','', '2025-10-10','','','bos','', '2025-11-20','','','gebe','2026-08-30'],
   ];
-  const ws2 = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
-  ws2['!cols'] = [18, ...Array(35).fill({wch:14})];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Tohumlamalar');
+  const ws = XLSX.utils.aoa_to_sheet([baslik, ...ornek]);
+  ws['!cols'] = [18,12,12,14,14,14,12,10, ...Array(35).fill({wch:14})];
+  XLSX.utils.book_append_sheet(wb, ws, 'Tohumlama');
 
   XLSX.writeFile(wb, `tohumlama_sablonu.xlsx`);
   showToast('✓ Şablon indirildi!');
