@@ -1982,13 +1982,14 @@ function saveBuzagiEkle() {
     id: genId(), createdAt: Date.now(), kupe,
     isletme: '', isim: '', irk: anne.irk || '',
     cinsiyet, dogum, sonDogum: '', repro: 'buzagi', laktasyon: 0,
+    anneKupe: anne.kupe,
     not: `Anne: ${anne.kupe}`, durum: 'hayatta',
     vaccines: [], weights: [], milkRecords: [], tohumlamalar: []
   });
 
   // Anneyi güncelle
-  if (!anne.sonDogum) anne.sonDogum = dogum;
-  anne.laktasyon = laktVal ? parseInt(laktVal) : (anne.laktasyon || 0) + 1;
+  if (!anne.sonDogum || dogum > anne.sonDogum) anne.sonDogum = dogum;
+  anne.laktasyon = laktVal ? parseInt(laktVal) : laktasyonHesapla(anne.kupe);
 
   save();
   closeModal('buzagiModal');
@@ -2036,7 +2037,6 @@ function saveDogum() {
   // Anneyi güncelle
   a.sonDogum = tarih;
   a.repro = 'fresh';
-  a.laktasyon = (a.laktasyon || 0) + 1;
   // Gebelik kaydını güncelle
   const sonGebe = (a.tohumlamalar||[]).filter(t => t.sonuc === 'gebe').pop();
   if (sonGebe) sonGebe.sonuc = 'dogurdu';
@@ -2058,6 +2058,7 @@ function saveDogum() {
         dogum: tarih,
         sonDogum: '',
         repro: 'buzagi',
+        anneKupe: a.kupe,
         not: `Anne: ${a.kupe}${document.getElementById('dog_not').value ? ' — '+document.getElementById('dog_not').value : ''}`,
         durum: 'hayatta',
         vaccines: [], weights: [], milkRecords: [], tohumlamalar: []
@@ -2069,6 +2070,9 @@ function saveDogum() {
   } else {
     showToast('✓ Doğum kaydedildi');
   }
+
+  // Yavru eklendikten sonra laktasyonu hesapla (ikiz/üçüz desteği)
+  a.laktasyon = laktasyonHesapla(a.kupe);
 
   save();
   closeModal('dogumModal');
@@ -2332,10 +2336,34 @@ function saveNot() {
 }
 
 // ===== SİL =====
+function laktasyonHesapla(anneKupe) {
+  // Aynı anneden, aynı günde doğan ikiz/üçüzler tek laktasyon sayılır
+  const tarihler = animals
+    .filter(a => a.anneKupe === anneKupe && a.dogum)
+    .map(a => a.dogum);
+  return new Set(tarihler).size;
+}
+
 function deleteAnimal(id) {
   if (misafirKontrol()) return;
   if (!confirm('Bu hayvanı silmek istediğinize emin misiniz?')) return;
+  const silinen = animals.find(a => a.id === id);
   animals = animals.filter(a => a.id !== id);
+
+  // Buzağıysa annenin laktasyonunu güncelle
+  if (silinen && silinen.anneKupe) {
+    const anne = animals.find(a => a.kupe === silinen.anneKupe);
+    if (anne) {
+      anne.laktasyon = laktasyonHesapla(anne.kupe);
+      const kalanBuzagilar = animals.filter(a => a.anneKupe === anne.kupe);
+      if (kalanBuzagilar.length > 0) {
+        anne.sonDogum = kalanBuzagilar
+          .map(a => a.dogum).filter(Boolean)
+          .sort().pop() || anne.sonDogum;
+      }
+    }
+  }
+
   save(); showPage('animals'); showToast('Hayvan silindi');
 }
 
