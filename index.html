@@ -3006,6 +3006,17 @@ function startListening() {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
+      // Tek seferlik otomatik düzeltme: laktasyonsuz Gebe İnek → Gebe Düve
+      if (!window._reproMigrasyonYapildi) {
+        window._reproMigrasyonYapildi = true;
+        const hatalilar = window.animals.filter(a => a.repro === 'gebe' && (!a.laktasyon || a.laktasyon === 0));
+        if (hatalilar.length > 0) {
+          hatalilar.forEach(a => { a.repro = 'gebeduve'; });
+          localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
+          saveToFirebase();
+          console.log(`Migrasyon: ${hatalilar.length} hayvan gebeduve'ye dönüştürüldü.`);
+        }
+      }
       if (window.currentPage === 'detail') renderDetail();
       else { renderDashboard(); if (window.currentPage === 'animals') renderAnimals(); }
     }
