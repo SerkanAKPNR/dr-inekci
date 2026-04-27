@@ -195,7 +195,24 @@ canvas { max-width: 100%; }
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
     <div class="filters" id="filterChips" style="margin-bottom:0;"></div>
     <button id="topluSilBtn" class="btn btn-outline btn-sm" onclick="toggleTopluSil()" style="white-space:nowrap;border-color:var(--danger);color:var(--danger);">Toplu Sil</button>
+    <button id="topluPadokBtn" class="btn btn-outline btn-sm" onclick="toggleTopluPadok()" style="white-space:nowrap;border-color:#7c5cbf;color:#7c5cbf;">📍 Padok Ata</button>
   </div>
+  <div id="topluPadokPanel" style="display:none;background:var(--surface);border:1px solid #7c5cbf;border-radius:10px;padding:12px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Padok atanacak hayvanları seç:</div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="topluPadokHepsiniSec(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Tümü</button>
+        <button onclick="topluPadokHepsiniSec(false)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Temizle</button>
+      </div>
+    </div>
+    <div id="topluPadokList"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+      <select id="topluPadokSec" class="form-select" style="flex:1;font-size:0.85rem;padding:7px 10px;">
+        <option value="">— Padok seç —</option>
+      </select>
+      <button class="btn" style="flex:1;background:#7c5cbf;border-color:#7c5cbf;" onclick="executeTopluPadok()">Ata</button>
+      <button class="btn btn-outline" style="flex:1" onclick="toggleTopluPadok()">İptal</button>
+    </div>
   <div id="topluSilPanel" style="display:none;background:var(--surface);border:1px solid var(--danger);border-radius:10px;padding:12px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Silmek istediğin hayvanları seç:</div>
@@ -2569,6 +2586,50 @@ function executeTopluSil() {
   animals = animals.filter(a => !ids.includes(a.id));
   save(); topluSilAcik = false; document.getElementById('topluSilPanel').style.display = 'none';
   showToast(secilen.length + ' hayvan silindi'); renderAnimals(); renderDashboard();
+}
+
+// ===== TOPLU PADOK ATA =====
+let topluPadokAcik = false;
+
+function toggleTopluPadok() {
+  topluPadokAcik = !topluPadokAcik;
+  document.getElementById('topluPadokPanel').style.display = topluPadokAcik ? 'block' : 'none';
+  if (topluPadokAcik) {
+    // Padok dropdown doldur
+    const sel = document.getElementById('topluPadokSec');
+    sel.innerHTML = '<option value="">— Padok seç —</option>' +
+      (window.padoklar||[]).map(p => `<option value="${p.id}">${p.ad}</option>`).join('') +
+      '<option value="kaldir">🚫 Padok Kaldır</option>';
+    // Hayvan listesi
+    const list = animals.filter(a => !a.durum||a.durum==='hayatta');
+    const padokAd = p => (window.padoklar||[]).find(x => x.id===p)?.ad || '';
+    document.getElementById('topluPadokList').innerHTML = list.map(a => `
+      <label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+        <input type="checkbox" id="pp_${a.id}" style="width:18px;height:18px;accent-color:#7c5cbf;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;">${a.kupe||'—'}</span>
+        <span style="color:var(--text2);font-size:0.78rem;">${a.isim||''}</span>
+        ${a.padokId ? `<span style="font-size:0.72rem;color:#7c5cbf;margin-left:auto;">📍 ${padokAd(a.padokId)}</span>` : ''}
+        <span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}" style="${a.padokId?'':'margin-left:auto;'}">${REPRO_LABEL[a.repro||'diger']}</span>
+      </label>`).join('');
+  }
+}
+
+function topluPadokHepsiniSec(sec) { document.querySelectorAll('[id^="pp_"]').forEach(cb => cb.checked = sec); }
+
+function executeTopluPadok() {
+  const secilen = animals.filter(a => document.getElementById('pp_'+a.id)?.checked);
+  if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
+  const padokId = document.getElementById('topluPadokSec').value;
+  if (!padokId) { showToast('Padok seçin!'); return; }
+  secilen.forEach(a => { a.padokId = padokId === 'kaldir' ? null : padokId; });
+  save();
+  topluPadokAcik = false;
+  document.getElementById('topluPadokPanel').style.display = 'none';
+  const padokAd = (window.padoklar||[]).find(p => p.id===padokId)?.ad || '';
+  showToast(padokId === 'kaldir'
+    ? `✓ ${secilen.length} hayvanın padok ataması kaldırıldı`
+    : `✓ ${secilen.length} hayvan "${padokAd}" padoğuna atandı`);
+  renderAnimals();
 }
 
 // ===== TOPLU GİRİŞ =====
