@@ -124,6 +124,15 @@ body { font-family: 'Crimson Pro', serif; background: var(--bg); color: var(--te
 
 canvas { max-width: 100%; }
 </style>
+<script>
+  // Eski service worker varsa temizle
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(reg => reg.unregister());
+    });
+    caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+  }
+</script>
 </head>
 <body>
 
