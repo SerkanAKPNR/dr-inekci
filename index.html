@@ -1169,6 +1169,14 @@ function renderDashboard() {
     </div>
   `;
   document.getElementById('headerSub').textContent = `Toplam ${aktif.length} aktif hayvan`;
+  // Son güncelleme tarihi
+  const updatedAt = window._lastUpdatedAt;
+  const subEl = document.getElementById('headerSub');
+  if (updatedAt) {
+    const d = new Date(updatedAt);
+    const fmt = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    subEl.textContent = `Toplam ${aktif.length} aktif hayvan · ${fmt}`;
+  }
 
   // Kuru uyarısı — doğuma 60 gün kalan ama hâlâ gebe olanlar
   kuruUyariKontrol(aktif);
@@ -1232,7 +1240,38 @@ function renderDashboard() {
       </div>`).join('');
   }
 
+  // Padok özeti
+  const padoklar = window.padoklar || [];
+  if (padoklar.length > 0) {
+    html += '<div class="sec-title" style="margin-top:16px;">Padok Durumu</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;">';
+    padoklar.forEach(p => {
+      const hayvanlar = aktif.filter(a => a.padokId === p.id);
+      const sagmalSayisi = hayvanlar.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro)).length;
+      html += `<div class="stat-card" onclick="filterAndShowPadok('${p.id}')" style="border-color:#7c5cbf;cursor:pointer;">
+        <div style="font-size:0.75rem;color:#7c5cbf;font-family:'JetBrains Mono',monospace;font-weight:700;margin-bottom:4px;">📍 ${p.ad}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div><div class="stat-num" style="color:var(--text);font-size:1.3rem;">${hayvanlar.length}</div><div class="stat-label">Toplam</div></div>
+          <div style="text-align:right;"><div class="stat-num" style="color:#0077aa;font-size:1rem;">${sagmalSayisi}</div><div class="stat-label" style="font-size:0.65rem;">Sağmal</div></div>
+        </div>
+      </div>`;
+    });
+    const atamasiz = aktif.filter(a => !a.padokId).length;
+    if (atamasiz > 0) {
+      html += `<div class="stat-card" style="border-color:var(--border);">
+        <div style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:4px;">📍 Atanmamış</div>
+        <div class="stat-num" style="color:var(--text2);font-size:1.3rem;">${atamasiz}</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
   document.getElementById('dashReminders').innerHTML = html;
+}
+
+function filterAndShowPadok(padokId) {
+  currentFilter = 'padok_' + padokId;
+  showPage('animals');
 }
 
 // ===== HAYVANLAR =====
@@ -3180,6 +3219,7 @@ function startListening() {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       window.padoklar = snap.data().padoklar || [];
+      window._lastUpdatedAt = snap.data().updatedAt || null;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
       localStorage.setItem('sagmal_padoklar', JSON.stringify(window.padoklar));
       // Tek seferlik otomatik düzeltme
