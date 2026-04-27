@@ -1300,12 +1300,11 @@ function renderAnimals() {
   else if (currentFilter === 'l1') list = list.filter(a => (a.laktasyon||0) === 1);
   else if (currentFilter === 'l2') list = list.filter(a => (a.laktasyon||0) === 2);
   else if (currentFilter === 'l3') list = list.filter(a => (a.laktasyon||0) >= 3);
-  else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
-  if (padokSec) list = list.filter(a => a.padokId === padokSec);
   else if (currentFilter.startsWith('padok_')) {
     const pid = currentFilter.replace('padok_', '');
     list = list.filter(a => a.padokId === pid);
-  }
+  } else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
+  if (padokSec) list = list.filter(a => a.padokId === padokSec);
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
   const el = document.getElementById('animalList');
