@@ -1224,6 +1224,8 @@ function renderAnimals() {
   const labels = {hepsi:'Hepsi', sagmal:'Sağmal', fresh:'Fresh', tohumlu:'Tohumlu', gebe:'Gebe', kuru:'Kuru', closeup:'Close-up', acik:'Açık', duve:'Düve', gebeduve:'Gebe Düve', kucuk:'Buzağı/Dana', l1:'1.Lakt.', l2:'2.Lakt.', l3:'3+Lakt.'};
   document.getElementById('filterChips').innerHTML = filters.map(f =>
     `<button class="chip ${currentFilter===f?'active':''}" onclick="currentFilter='${f}';renderAnimals()">${labels[f]}</button>`
+  ).join('') + (window.padoklar||[]).map(p =>
+    `<button class="chip ${currentFilter==='padok_'+p.id?'active':''}" onclick="currentFilter='padok_${p.id}';renderAnimals()" style="border-color:#7c5cbf;color:${currentFilter==='padok_'+p.id?'#fff':'#7c5cbf'};${currentFilter==='padok_'+p.id?'background:#7c5cbf;':''}"">📍 ${p.ad}</button>`
   ).join('');
 
   // Padok filtre dropdown güncelle
@@ -1244,6 +1246,10 @@ function renderAnimals() {
   else if (currentFilter === 'l3') list = list.filter(a => (a.laktasyon||0) >= 3);
   else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
   if (padokSec) list = list.filter(a => a.padokId === padokSec);
+  else if (currentFilter.startsWith('padok_')) {
+    const pid = currentFilter.replace('padok_', '');
+    list = list.filter(a => a.padokId === pid);
+  }
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
   const el = document.getElementById('animalList');
