@@ -1281,7 +1281,7 @@ function renderAnimals() {
   document.getElementById('filterChips').innerHTML = filters.map(f =>
     `<button class="chip ${currentFilter===f?'active':''}" onclick="currentFilter='${f}';renderAnimals()">${labels[f]}</button>`
   ).join('') + (window.padoklar||[]).map(p =>
-    `<button class="chip ${currentFilter==='padok_'+p.id?'active':''}" onclick="currentFilter='padok_${p.id}';renderAnimals()" style="border-color:#7c5cbf;color:${currentFilter==='padok_'+p.id?'#fff':'#7c5cbf'};${currentFilter==='padok_'+p.id?'background:#7c5cbf;':''}"">📍 ${p.ad}</button>`
+    `<button class="chip ${currentFilter==='padok_'+p.id?'active':''}" onclick="currentFilter='padok_${p.id}';renderAnimals()" style="border-color:#7c5cbf;color:${currentFilter==='padok_'+p.id?'#fff':'#7c5cbf'};${currentFilter==='padok_'+p.id?'background:#7c5cbf;':''}">📍 ${p.ad}</button>`
   ).join('');
 
   // Padok filtre dropdown güncelle
