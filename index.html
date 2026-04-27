@@ -1292,7 +1292,7 @@ function renderAnimals() {
       (window.padoklar||[]).map(p => `<option value="${p.id}" ${secili===p.id?'selected':''}>${p.ad}</option>`).join('');
   }
 
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
   const padokSec = padokFilter ? padokFilter.value : '';
   let list = animals.filter(a => !a.durum || a.durum === 'hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
@@ -1340,7 +1340,8 @@ function animalCard(a) {
     borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
   }
 
-  const padokAd = (window.padoklar||[]).find(p => p.id === a.padokId)?.ad || '';
+  const padokObj = (window.padoklar||[]).find(p => p.id === a.padokId);
+  const padokAd = padokObj ? padokObj.ad : '';
   return `<div class="animal-card" onclick="openDetail('${a.id}')" style="${borderStyle}">
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
@@ -1816,7 +1817,7 @@ function senkronBaslat() {
   const baslangic = document.getElementById('senkron_baslangic').value;
   if (!baslangic) { showToast('Başlangıç tarihi gerekli!'); return; }
   const p = PROTOKOLLER[protokolKey];
-  const secilen = animals.filter(a => document.getElementById('snk_' + a.id)?.checked);
+  const secilen = animals.filter(a => (document.getElementById('snk_' + a.id) ? document.getElementById('snk_' + a.id).checked : false));
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
 
   if (!window.senkronlar) window.senkronlar = [];
@@ -2044,7 +2045,7 @@ function suruUygula() {
   const not = document.getElementById('suru_not').value.trim();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
-  let secilen = list.filter(a => document.getElementById('sc_' + a.id)?.checked);
+  let secilen = list.filter(a => (document.getElementById('sc_' + a.id) ? document.getElementById('sc_' + a.id).checked : false));
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (isPG(isim)) {
     const gebeler = secilen.filter(a => a.repro === 'gebe');
@@ -2095,7 +2096,7 @@ function suruGrubaUygula() {
 
 // ===== NAVİGASYON =====
 function getFilteredAnimalList() {
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
@@ -2618,7 +2619,7 @@ function toggleTopluSil() {
 function topluSilHepsiniSec(sec) { document.querySelectorAll('[id^="sil_"]').forEach(cb => cb.checked = sec); }
 
 function executeTopluSil() {
-  const secilen = animals.filter(a => document.getElementById('sil_'+a.id)?.checked);
+  const secilen = animals.filter(a => (document.getElementById('sil_'+a.id) ? document.getElementById('sil_'+a.id).checked : false));
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (!confirm(secilen.length + ' hayvanı silmek istediğinize emin misiniz?')) return;
   const ids = secilen.map(a => a.id);
@@ -2641,7 +2642,7 @@ function toggleTopluPadok() {
       '<option value="kaldir">🚫 Padok Kaldır</option>';
     // Hayvan listesi
     const list = animals.filter(a => !a.durum||a.durum==='hayatta');
-    const padokAd = p => (window.padoklar||[]).find(x => x.id===p)?.ad || '';
+    const padokAd = p => { const _p = (window.padoklar||[]).find(x => x.id===p); return _p ? _p.ad : ''; };
     document.getElementById('topluPadokList').innerHTML = list.map(a => `
       <label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;">
         <input type="checkbox" id="pp_${a.id}" style="width:18px;height:18px;accent-color:#7c5cbf;">
@@ -2656,7 +2657,7 @@ function toggleTopluPadok() {
 function topluPadokHepsiniSec(sec) { document.querySelectorAll('[id^="pp_"]').forEach(cb => cb.checked = sec); }
 
 function executeTopluPadok() {
-  const secilen = animals.filter(a => document.getElementById('pp_'+a.id)?.checked);
+  const secilen = animals.filter(a => (document.getElementById('pp_'+a.id) ? document.getElementById('pp_'+a.id).checked : false));
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   const padokId = document.getElementById('topluPadokSec').value;
   if (!padokId) { showToast('Padok seçin!'); return; }
@@ -2664,7 +2665,7 @@ function executeTopluPadok() {
   save();
   topluPadokAcik = false;
   document.getElementById('topluPadokPanel').style.display = 'none';
-  const padokAd = (window.padoklar||[]).find(p => p.id===padokId)?.ad || '';
+  const _po = (window.padoklar||[]).find(p => p.id===padokId); const padokAd = _po ? _po.ad : '';
   showToast(padokId === 'kaldir'
     ? `✓ ${secilen.length} hayvanın padok ataması kaldırıldı`
     : `✓ ${secilen.length} hayvan "${padokAd}" padoğuna atandı`);
