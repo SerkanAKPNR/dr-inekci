@@ -3103,6 +3103,7 @@ async function saveToFirebase() {
     }, { merge: true });
   } catch(e) { console.error('Kayıt hatası:', e); }
 }
+window.saveToFirebase = saveToFirebase;
 
 // ===== DİNLE =====
 function startListening() {
