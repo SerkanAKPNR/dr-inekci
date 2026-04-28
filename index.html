@@ -187,32 +187,10 @@ canvas { max-width: 100%; }
 <!-- HAYVANLAR -->
 <div class="page" id="page-animals">
   <input class="search-bar" type="text" placeholder="Küpe no veya isim ara..." id="searchInput" oninput="renderAnimals()">
-  <div style="padding:0 16px 6px;">
-    <select id="padokFilter" class="form-select" style="font-size:0.8rem;padding:5px 10px;" onchange="renderAnimals()">
-      <option value="">Tüm Padoklar</option>
-    </select>
-  </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
     <div class="filters" id="filterChips" style="margin-bottom:0;"></div>
     <button id="topluSilBtn" class="btn btn-outline btn-sm" onclick="toggleTopluSil()" style="white-space:nowrap;border-color:var(--danger);color:var(--danger);">Toplu Sil</button>
-    <button id="topluPadokBtn" class="btn btn-outline btn-sm" onclick="toggleTopluPadok()" style="white-space:nowrap;border-color:#7c5cbf;color:#7c5cbf;">📍 Padok Ata</button>
   </div>
-  <div id="topluPadokPanel" style="display:none;background:var(--surface);border:1px solid #7c5cbf;border-radius:10px;padding:12px;margin-bottom:12px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Padok atanacak hayvanları seç:</div>
-      <div style="display:flex;gap:6px;">
-        <button onclick="topluPadokHepsiniSec(true)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Tümü</button>
-        <button onclick="topluPadokHepsiniSec(false)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">Temizle</button>
-      </div>
-    </div>
-    <div id="topluPadokList"></div>
-    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
-      <select id="topluPadokSec" class="form-select" style="flex:1;font-size:0.85rem;padding:7px 10px;">
-        <option value="">— Padok seç —</option>
-      </select>
-      <button class="btn" style="flex:1;background:#7c5cbf;border-color:#7c5cbf;" onclick="executeTopluPadok()">Ata</button>
-      <button class="btn btn-outline" style="flex:1" onclick="toggleTopluPadok()">İptal</button>
-    </div>
   <div id="topluSilPanel" style="display:none;background:var(--surface);border:1px solid var(--danger);border-radius:10px;padding:12px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div style="font-size:0.75rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">Silmek istediğin hayvanları seç:</div>
@@ -359,15 +337,6 @@ canvas { max-width: 100%; }
     </div>
     <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Bu e-postayla giriş yapan kişi bu işletmeye erişir</div>
     <button onclick="isletmeAyarlariKaydet()" class="btn" style="width:100%;margin-top:8px;">💾 Kaydet</button>
-  </div>
-
-  <div class="sec-title">Padok Yönetimi</div>
-  <div class="detail-card">
-    <div id="padokListesi" style="margin-bottom:10px;"></div>
-    <div style="display:flex;gap:8px;">
-      <input class="form-input" id="yeniPadokAd" placeholder="Padok adı girin..." style="flex:1;padding:8px 10px;" onkeydown="if(event.key==='Enter')padokEkle()">
-      <button class="btn btn-sm" onclick="padokEkle()" style="padding:8px 14px;">+ Ekle</button>
-    </div>
   </div>
 
   <div class="sec-title">Reprodüktif Ayarlar</div>
@@ -602,12 +571,6 @@ canvas { max-width: 100%; }
           <option value="diger">Diğer</option>
         </select>
       </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Padok</label>
-      <select class="form-select" id="e_padok">
-        <option value="">— Padok seçin —</option>
-      </select>
     </div>
     <div class="form-group">
       <label class="form-label">Durum</label>
@@ -1168,14 +1131,14 @@ function renderDashboard() {
       <div class="stat-label">Toplam</div>
     </div>
   `;
-  document.getElementById('headerSub').textContent = `Toplam ${aktif.length} aktif hayvan`;
-  // Son güncelleme tarihi
-  const updatedAt = window._lastUpdatedAt;
-  const subEl = document.getElementById('headerSub');
-  if (updatedAt) {
-    const d = new Date(updatedAt);
-    const fmt = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    subEl.textContent = `Toplam ${aktif.length} aktif hayvan · ${fmt}`;
+  const _upd = window._lastUpdatedAt;
+  const _sub = document.getElementById('headerSub');
+  if (_upd) {
+    const _d = new Date(_upd);
+    const _fmt = ('0'+_d.getDate()).slice(-2)+'.'+('0'+(_d.getMonth()+1)).slice(-2)+'.'+_d.getFullYear()+' '+('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2);
+    _sub.textContent = 'Toplam ' + aktif.length + ' aktif hayvan · ' + _fmt;
+  } else {
+    _sub.textContent = 'Toplam ' + aktif.length + ' aktif hayvan';
   }
 
   // Kuru uyarısı — doğuma 60 gün kalan ama hâlâ gebe olanlar
@@ -1240,38 +1203,7 @@ function renderDashboard() {
       </div>`).join('');
   }
 
-  // Padok özeti
-  const padoklar = window.padoklar || [];
-  if (padoklar.length > 0) {
-    html += '<div class="sec-title" style="margin-top:16px;">Padok Durumu</div>';
-    html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px;">';
-    padoklar.forEach(p => {
-      const hayvanlar = aktif.filter(a => a.padokId === p.id);
-      const sagmalSayisi = hayvanlar.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro)).length;
-      html += `<div class="stat-card" onclick="filterAndShowPadok('${p.id}')" style="border-color:#7c5cbf;cursor:pointer;">
-        <div style="font-size:0.75rem;color:#7c5cbf;font-family:'JetBrains Mono',monospace;font-weight:700;margin-bottom:4px;">📍 ${p.ad}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div class="stat-num" style="color:var(--text);font-size:1.3rem;">${hayvanlar.length}</div><div class="stat-label">Toplam</div></div>
-          <div style="text-align:right;"><div class="stat-num" style="color:#0077aa;font-size:1rem;">${sagmalSayisi}</div><div class="stat-label" style="font-size:0.65rem;">Sağmal</div></div>
-        </div>
-      </div>`;
-    });
-    const atamasiz = aktif.filter(a => !a.padokId).length;
-    if (atamasiz > 0) {
-      html += `<div class="stat-card" style="border-color:var(--border);">
-        <div style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:4px;">📍 Atanmamış</div>
-        <div class="stat-num" style="color:var(--text2);font-size:1.3rem;">${atamasiz}</div>
-      </div>`;
-    }
-    html += '</div>';
-  }
-
   document.getElementById('dashReminders').innerHTML = html;
-}
-
-function filterAndShowPadok(padokId) {
-  currentFilter = 'padok_' + padokId;
-  showPage('animals');
 }
 
 // ===== HAYVANLAR =====
@@ -1280,40 +1212,22 @@ function renderAnimals() {
   const labels = {hepsi:'Hepsi', sagmal:'Sağmal', fresh:'Fresh', tohumlu:'Tohumlu', gebe:'Gebe', kuru:'Kuru', closeup:'Close-up', acik:'Açık', duve:'Düve', gebeduve:'Gebe Düve', kucuk:'Buzağı/Dana', l1:'1.Lakt.', l2:'2.Lakt.', l3:'3+Lakt.'};
   document.getElementById('filterChips').innerHTML = filters.map(f =>
     `<button class="chip ${currentFilter===f?'active':''}" onclick="currentFilter='${f}';renderAnimals()">${labels[f]}</button>`
-  ).join('') + (window.padoklar||[]).map(p =>
-    `<button class="chip ${currentFilter==='padok_'+p.id?'active':''}" onclick="currentFilter='padok_${p.id}';renderAnimals()" style="border-color:#7c5cbf;color:${currentFilter==='padok_'+p.id?'#fff':'#7c5cbf'};${currentFilter==='padok_'+p.id?'background:#7c5cbf;':''}">📍 ${p.ad}</button>`
   ).join('');
 
-  // Padok filtre dropdown güncelle
-  const padokFilter = document.getElementById('padokFilter');
-  if (padokFilter) {
-    const secili = padokFilter.value;
-    padokFilter.innerHTML = '<option value="">Tüm Padoklar</option>' +
-      (window.padoklar||[]).map(p => `<option value="${p.id}" ${secili===p.id?'selected':''}>${p.ad}</option>`).join('');
-  }
-
-  const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
-  const padokSec = padokFilter ? padokFilter.value : '';
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
   let list = animals.filter(a => !a.durum || a.durum === 'hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
   else if (currentFilter === 'l1') list = list.filter(a => (a.laktasyon||0) === 1);
   else if (currentFilter === 'l2') list = list.filter(a => (a.laktasyon||0) === 2);
   else if (currentFilter === 'l3') list = list.filter(a => (a.laktasyon||0) >= 3);
-  else if (currentFilter.startsWith('padok_')) {
-    const pid = currentFilter.replace('padok_', '');
-    list = list.filter(a => a.padokId === pid);
-  } else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
-  if (padokSec) list = list.filter(a => a.padokId === padokSec);
+  else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
   const el = document.getElementById('animalList');
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Hayvan bulunamadı</div></div>'; return; }
-  try {
-    el.innerHTML = list.map(animalCard).join('');
-  } catch(e) {
-    el.innerHTML = '<div class="empty"><div class="empty-text">Hata: ' + e.message + '</div></div>';
-  }
+
+  el.innerHTML = list.map(animalCard).join('');
 }
 
 function animalCard(a) {
@@ -1342,8 +1256,6 @@ function animalCard(a) {
     borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
   }
 
-  const padokObj = (window.padoklar||[]).find(p => p.id === a.padokId);
-  const padokAd = padokObj ? padokObj.ad : '';
   return `<div class="animal-card" onclick="openDetail('${a.id}')" style="${borderStyle}">
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
@@ -1354,7 +1266,6 @@ function animalCard(a) {
       <span>📅 ${sgsStr}</span>
       <span>🥛 ${sonSut}</span>
       <span>🔢 ${laktStr}</span>
-      ${padokAd ? '<span>📍 ' + padokAd + '</span>' : ''}
     </div>
   </div>`;
 }
@@ -1819,7 +1730,7 @@ function senkronBaslat() {
   const baslangic = document.getElementById('senkron_baslangic').value;
   if (!baslangic) { showToast('Başlangıç tarihi gerekli!'); return; }
   const p = PROTOKOLLER[protokolKey];
-  const secilen = animals.filter(a => (document.getElementById('snk_' + a.id) ? document.getElementById('snk_' + a.id).checked : false));
+  const secilen = animals.filter(a => document.getElementById('snk_' + a.id)?.checked);
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
 
   if (!window.senkronlar) window.senkronlar = [];
@@ -1939,7 +1850,6 @@ function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
   document.getElementById('ayarlarToplam').textContent = aktif + ' hayvan';
   document.getElementById('ay_bekleme').value = getBeklemeSuresi();
-  renderPadokListesi();
   const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
   const database = window.db;
   if (isletmeId && database) {
@@ -1952,68 +1862,6 @@ function renderAyarlar() {
       });
     });
   }
-}
-
-// ===== PADOK YÖNETİMİ =====
-function renderPadokListesi() {
-  const el = document.getElementById('padokListesi');
-  if (!el) return;
-  const padoklar = window.padoklar || [];
-  if (!padoklar.length) {
-    el.innerHTML = '<div style="font-size:0.8rem;color:var(--text2);font-family:\'JetBrains Mono\',monospace;padding:6px 0;">Henüz padok eklenmedi</div>';
-    return;
-  }
-  el.innerHTML = padoklar.map(p => {
-    const sayac = animals.filter(a => a.padokId === p.id && (!a.durum||a.durum==='hayatta')).length;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
-      <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:0.85rem;">${p.ad}</span>
-      <span style="font-size:0.75rem;color:var(--text2);">${sayac} hayvan</span>
-      <button onclick="padokDuzenle('${p.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:0.75rem;color:var(--text2);cursor:pointer;">✏️</button>
-      <button onclick="padokSil('${p.id}')" style="background:none;border:1px solid var(--danger);border-radius:6px;padding:3px 8px;font-size:0.75rem;color:var(--danger);cursor:pointer;">🗑️</button>
-    </div>`;
-  }).join('');
-}
-
-function padokEkle() {
-  const input = document.getElementById('yeniPadokAd');
-  const ad = input.value.trim();
-  if (!ad) { showToast('Padok adı boş olamaz!'); return; }
-  if ((window.padoklar||[]).find(p => p.ad.toLowerCase() === ad.toLowerCase())) { showToast('Bu padok zaten mevcut!'); return; }
-  if (!window.padoklar) window.padoklar = [];
-  window.padoklar.push({ id: 'p' + Date.now(), ad });
-  input.value = '';
-  localStorage.setItem('sagmal_padoklar', JSON.stringify(window.padoklar));
-  saveToFirebase();
-  renderPadokListesi();
-  showToast('✓ Padok eklendi');
-}
-
-function padokDuzenle(id) {
-  const p = (window.padoklar||[]).find(x => x.id === id);
-  if (!p) return;
-  const yeniAd = prompt('Padok adını düzenle:', p.ad);
-  if (!yeniAd || !yeniAd.trim()) return;
-  p.ad = yeniAd.trim();
-  localStorage.setItem('sagmal_padoklar', JSON.stringify(window.padoklar));
-  saveToFirebase();
-  renderPadokListesi();
-  showToast('✓ Padok güncellendi');
-}
-
-function padokSil(id) {
-  const p = (window.padoklar||[]).find(x => x.id === id);
-  if (!p) return;
-  const sayac = animals.filter(a => a.padokId === id && (!a.durum||a.durum==='hayatta')).length;
-  const mesaj = sayac > 0
-    ? `"${p.ad}" silinecek. ${sayac} hayvanın padok ataması kaldırılacak. Devam?`
-    : `"${p.ad}" silinsin mi?`;
-  if (!confirm(mesaj)) return;
-  window.padoklar = window.padoklar.filter(x => x.id !== id);
-  animals.forEach(a => { if (a.padokId === id) a.padokId = null; });
-  localStorage.setItem('sagmal_padoklar', JSON.stringify(window.padoklar));
-  save();
-  renderPadokListesi();
-  showToast('✓ Padok silindi');
 }
 
 // ===== SÜRÜ =====
@@ -2047,7 +1895,7 @@ function suruUygula() {
   const not = document.getElementById('suru_not').value.trim();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
-  let secilen = list.filter(a => (document.getElementById('sc_' + a.id) ? document.getElementById('sc_' + a.id).checked : false));
+  let secilen = list.filter(a => document.getElementById('sc_' + a.id)?.checked);
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (isPG(isim)) {
     const gebeler = secilen.filter(a => a.repro === 'gebe');
@@ -2098,7 +1946,7 @@ function suruGrubaUygula() {
 
 // ===== NAVİGASYON =====
 function getFilteredAnimalList() {
-  const q = ((document.getElementById('searchInput') ? document.getElementById('searchInput').value : '') || '').toLowerCase();
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
@@ -2274,11 +2122,6 @@ function openEditModal(id) {
   const navList = getFilteredAnimalList();
   const navIdx = navList.findIndex(x => x.id === id);
   if (navIdx !== -1) document.getElementById('editNavPos').textContent = `${navIdx+1}/${navList.length}`;
-  // Padok dropdown doldur
-  const padokSel = document.getElementById('e_padok');
-  padokSel.innerHTML = '<option value="">— Padok seçin —</option>' +
-    (window.padoklar||[]).map(p => `<option value="${p.id}">${p.ad}</option>`).join('');
-  padokSel.value = a.padokId || '';
   document.getElementById('editModal').classList.add('open');
 }
 
@@ -2360,7 +2203,6 @@ function saveEdit(silent=false) {
   const yeniSonDogum = document.getElementById('e_sonDogum').value;
   a.sonDogum = yeniSonDogum;
   a.repro = document.getElementById('e_repro').value;
-  a.padokId = document.getElementById('e_padok').value || null;
   // sonDogum girilmiş ve repro hâlâ tohumlu/gebeduve'deyse → fresh yap
   if (yeniSonDogum && ['tohumlu','gebeduve'].includes(a.repro)) {
     a.repro = 'fresh';
@@ -2621,57 +2463,13 @@ function toggleTopluSil() {
 function topluSilHepsiniSec(sec) { document.querySelectorAll('[id^="sil_"]').forEach(cb => cb.checked = sec); }
 
 function executeTopluSil() {
-  const secilen = animals.filter(a => (document.getElementById('sil_'+a.id) ? document.getElementById('sil_'+a.id).checked : false));
+  const secilen = animals.filter(a => document.getElementById('sil_'+a.id)?.checked);
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (!confirm(secilen.length + ' hayvanı silmek istediğinize emin misiniz?')) return;
   const ids = secilen.map(a => a.id);
   animals = animals.filter(a => !ids.includes(a.id));
   save(); topluSilAcik = false; document.getElementById('topluSilPanel').style.display = 'none';
   showToast(secilen.length + ' hayvan silindi'); renderAnimals(); renderDashboard();
-}
-
-// ===== TOPLU PADOK ATA =====
-let topluPadokAcik = false;
-
-function toggleTopluPadok() {
-  topluPadokAcik = !topluPadokAcik;
-  document.getElementById('topluPadokPanel').style.display = topluPadokAcik ? 'block' : 'none';
-  if (topluPadokAcik) {
-    // Padok dropdown doldur
-    const sel = document.getElementById('topluPadokSec');
-    sel.innerHTML = '<option value="">— Padok seç —</option>' +
-      (window.padoklar||[]).map(p => `<option value="${p.id}">${p.ad}</option>`).join('') +
-      '<option value="kaldir">🚫 Padok Kaldır</option>';
-    // Hayvan listesi
-    const list = animals.filter(a => !a.durum||a.durum==='hayatta');
-    const padokAd = p => { const _p = (window.padoklar||[]).find(x => x.id===p); return _p ? _p.ad : ''; };
-    document.getElementById('topluPadokList').innerHTML = list.map(a => `
-      <label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;">
-        <input type="checkbox" id="pp_${a.id}" style="width:18px;height:18px;accent-color:#7c5cbf;">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;">${a.kupe||'—'}</span>
-        <span style="color:var(--text2);font-size:0.78rem;">${a.isim||''}</span>
-        ${a.padokId ? `<span style="font-size:0.72rem;color:#7c5cbf;margin-left:auto;">📍 ${padokAd(a.padokId)}</span>` : ''}
-        <span class="tag ${REPRO_TAG[a.repro||'diger']||'tag-diger'}" style="${a.padokId?'':'margin-left:auto;'}">${REPRO_LABEL[a.repro||'diger']}</span>
-      </label>`).join('');
-  }
-}
-
-function topluPadokHepsiniSec(sec) { document.querySelectorAll('[id^="pp_"]').forEach(cb => cb.checked = sec); }
-
-function executeTopluPadok() {
-  const secilen = animals.filter(a => (document.getElementById('pp_'+a.id) ? document.getElementById('pp_'+a.id).checked : false));
-  if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
-  const padokId = document.getElementById('topluPadokSec').value;
-  if (!padokId) { showToast('Padok seçin!'); return; }
-  secilen.forEach(a => { a.padokId = padokId === 'kaldir' ? null : padokId; });
-  save();
-  topluPadokAcik = false;
-  document.getElementById('topluPadokPanel').style.display = 'none';
-  const _po = (window.padoklar||[]).find(p => p.id===padokId); const padokAd = _po ? _po.ad : '';
-  showToast(padokId === 'kaldir'
-    ? `✓ ${secilen.length} hayvanın padok ataması kaldırıldı`
-    : `✓ ${secilen.length} hayvan "${padokAd}" padoğuna atandı`);
-  renderAnimals();
 }
 
 // ===== TOPLU GİRİŞ =====
@@ -2697,7 +2495,7 @@ function saveToplu() {
   save();
   const res = document.getElementById('topluResult');
   res.style.display = 'block';
-  res.innerHTML = '<span style="color:var(--accent)">✓ ' + added + ' hayvan eklendi</span>' + (skipped ? ' <span style="color:var(--warn)">• ' + skipped + ' zaten vardı</span>' : '');
+  res.innerHTML = `<span style="color:var(--accent)">✓ ${added} hayvan eklendi</span>${skipped?` <span style="color:var(--warn)">• ${skipped} zaten vardı</span>`:''}`;
   document.getElementById('topluInput').value = '';
   renderAnimals(); renderDashboard();
   setTimeout(() => { res.style.display='none'; closeModal('addModal'); }, 2000);
@@ -2748,7 +2546,7 @@ async function importFromExcel(event) {
   try {
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, {type:'array', cellDates:true});
-    let added=0, skipped=0, tohAdded=0;
+    let added=0, skipped=0, updated=0, tohAdded=0;
 
     // Hayvanlar sheet
     if (wb.SheetNames.includes('Hayvanlar')) {
@@ -2760,7 +2558,17 @@ async function importFromExcel(event) {
         const kupeRaw = String(row[0]||'').trim();
         if (!kupeRaw || kupeRaw.toLowerCase().includes('küpe')) continue;
         const kupe = formatKupe(kupeRaw);
-        if (animals.find(a => a.kupe===kupe)) { skipped++; continue; }
+        const mevcutHayvan = animals.find(a => a.kupe===kupe);
+        if (mevcutHayvan) {
+          mevcutHayvan.isletme = String(row[1]||'').trim() || mevcutHayvan.isletme;
+          mevcutHayvan.isim = String(row[2]||'').trim() || mevcutHayvan.isim;
+          mevcutHayvan.irk = String(row[5]||'').trim() || mevcutHayvan.irk;
+          if (dogum) mevcutHayvan.dogum = dogum;
+          if (sonDogum) mevcutHayvan.sonDogum = sonDogum;
+          if (repro) mevcutHayvan.repro = repro;
+          if (laktasyonVal !== null) mevcutHayvan.laktasyon = laktasyonVal;
+          updated++; continue;
+        }
         let dogum='', sonDogum='';
         if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
         if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
@@ -2841,7 +2649,7 @@ async function importFromExcel(event) {
     if (skipped) msg += `<span style="color:var(--warn)">• ${skipped} zaten vardı</span>`;
     if (!msg) msg = '<span style="color:var(--warn)">Eklenecek yeni veri bulunamadı</span>';
     if (result) result.innerHTML = msg;
-    showToast(`${added} hayvan, ${tohAdded} tohumlama eklendi`);
+    showToast(added + ' eklendi, ' + updated + ' güncellendi, ' + tohAdded + ' tohumlama');
   } catch(e) { if (result) result.innerHTML=`<span style="color:var(--danger)">⚠️ Hata: ${e.message}</span>`; }
   event.target.value='';
 }
@@ -3198,7 +3006,6 @@ try {
 let currentUser = null;
 let unsubscribe = null;
 let activeIsletmeId = null; // Şu an hangi işletmenin verisi gösteriliyor
-window.padoklar = JSON.parse(localStorage.getItem('sagmal_padoklar') || '[]');
 window.activeIsletmeId = null;
 
 // ===== KAYDET =====
@@ -3207,12 +3014,10 @@ async function saveToFirebase() {
   try {
     await setDoc(doc(db, 'isletmeler', activeIsletmeId), {
       animals: JSON.parse(JSON.stringify(window.animals)),
-      padoklar: window.padoklar || [],
       updatedAt: new Date().toISOString()
     }, { merge: true });
   } catch(e) { console.error('Kayıt hatası:', e); }
 }
-window.saveToFirebase = saveToFirebase;
 
 // ===== DİNLE =====
 function startListening() {
@@ -3221,10 +3026,8 @@ function startListening() {
   unsubscribe = onSnapshot(doc(db, 'isletmeler', activeIsletmeId), (snap) => {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
-      window.padoklar = snap.data().padoklar || [];
       window._lastUpdatedAt = snap.data().updatedAt || null;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
-      localStorage.setItem('sagmal_padoklar', JSON.stringify(window.padoklar));
       // Tek seferlik otomatik düzeltme
       if (!window._reproMigrasyonYapildi) {
         window._reproMigrasyonYapildi = true;
@@ -3446,6 +3249,7 @@ window.misafirFirebaseOku = async function() {
     const snap = await getDoc(doc(db, 'sagmal', ownerUID));
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
+      window._lastUpdatedAt = snap.data().updatedAt || null;
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
       renderDashboard(); renderAnimals();
     }
