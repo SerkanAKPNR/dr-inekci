@@ -1351,7 +1351,7 @@ function animalCard(a) {
       <span>📅 ${sgsStr}</span>
       <span>🥛 ${sonSut}</span>
       <span>🔢 ${laktStr}</span>
-      ${padokAd ? `<span>📍 ${padokAd}</span>` : ''}
+      ${padokAd ? '<span>📍 ' + padokAd + '</span>' : ''}
     </div>
   </div>`;
 }
@@ -2694,7 +2694,7 @@ function saveToplu() {
   save();
   const res = document.getElementById('topluResult');
   res.style.display = 'block';
-  res.innerHTML = `<span style="color:var(--accent)">✓ ${added} hayvan eklendi</span>${skipped?` <span style="color:var(--warn)">• ${skipped} zaten vardı</span>`:''}`;
+  res.innerHTML = '<span style="color:var(--accent)">✓ ' + added + ' hayvan eklendi</span>' + (skipped ? ' <span style="color:var(--warn)">• ' + skipped + ' zaten vardı</span>' : '');
   document.getElementById('topluInput').value = '';
   renderAnimals(); renderDashboard();
   setTimeout(() => { res.style.display='none'; closeModal('addModal'); }, 2000);
