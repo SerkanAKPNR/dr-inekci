@@ -1309,8 +1309,11 @@ function renderAnimals() {
 
   const el = document.getElementById('animalList');
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Hayvan bulunamadı</div></div>'; return; }
-
-  el.innerHTML = list.map(animalCard).join('');
+  try {
+    el.innerHTML = list.map(animalCard).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="empty"><div class="empty-text">Hata: ' + e.message + '</div></div>';
+  }
 }
 
 function animalCard(a) {
