@@ -352,6 +352,13 @@ canvas { max-width: 100%; }
     <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Bu süreden önce tohumlama uyarısı verilmez</div>
   </div>
 
+  <div class="sec-title">Sıralama Ayarları</div>
+  <div class="detail-card" id="siralamaAyarlariCard">
+    <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:0 0 10px 0;">Her hayvan grubu için sıralama kriteri belirleyin</div>
+    <div id="siralamaRows"></div>
+    <button onclick="siralamaAyarlariKaydet()" class="btn" style="width:100%;margin-top:10px;">💾 Kaydet</button>
+  </div>
+
   <div class="sec-title">Uygulama</div>
   <div class="detail-card">
     <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.04.27</span></div>
@@ -1231,28 +1238,13 @@ function renderAnimals() {
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
   // Akıllı sıralama
-  if (currentFilter === 'sagmal' || ['fresh','tohumlu','acik','l1','l2','l3'].includes(currentFilter)) {
-    // SGS'ye göre artan (en düşük önce)
-    list.sort((a, b) => {
-      const sgsA = calcSGS(a.sonDogum) ?? 9999;
-      const sgsB = calcSGS(b.sonDogum) ?? 9999;
-      return sgsA - sgsB;
-    });
-  } else if (currentFilter === 'kucuk') {
-    // Yaşa göre artan (en genç önce = en son doğan önce)
-    list.sort((a, b) => (b.dogum || '').localeCompare(a.dogum || ''));
-  } else if (['gebe','gebeduve','kuru','closeup'].includes(currentFilter)) {
-    // Doğuma kalan güne göre artan (en az kalan önce)
-    list.sort((a, b) => {
-      const kalanGun = (an) => {
-        const toh = (an.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
-        if (!toh) return 9999;
-        const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
-        return Math.round((new Date(beklenen) - new Date()) / 86400000);
-      };
-      return kalanGun(a) - kalanGun(b);
-    });
-  }
+  const ayar = getSiralamaAyari(currentFilter);
+  list.sort((a, b) => {
+    const va = getSiralamaValue(a, ayar.kriter);
+    const vb = getSiralamaValue(b, ayar.kriter);
+    if (typeof va === 'string') return ayar.yon === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return ayar.yon === 'asc' ? va - vb : vb - va;
+  });
 
   const el = document.getElementById('animalList');
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Hayvan bulunamadı</div></div>'; return; }
@@ -1888,13 +1880,111 @@ function renderAyarlar() {
         if (snap.exists()) {
           document.getElementById('ay_isletme_ad').value = snap.data().ad || '';
           document.getElementById('ay_isletme_email').value = snap.data().sorumluEmail || '';
+          siralamaAyarlariYukle(snap.data());
         }
+        renderSiralamaRows();
       });
     });
+  } else {
+    renderSiralamaRows();
   }
 }
 
-// ===== SÜRÜ =====
+// ===== SIRALAMA AYARLARI =====
+const SIRALAMA_GRUPLAR = [
+  { key: 'sagmal',   label: 'Sağmal (Fresh+Tohumlu+Açık)' },
+  { key: 'gebe',     label: 'Gebe' },
+  { key: 'kuru',     label: 'Kuru / Close-up' },
+  { key: 'kucuk',    label: 'Buzağı / Dana' },
+  { key: 'duve',     label: 'Düve / Gebe Düve' },
+  { key: 'hepsi',    label: 'Hepsi' },
+];
+const SIRALAMA_KRITERLER = [
+  { key: 'sgs',        label: 'SGS' },
+  { key: 'dogumKalan', label: 'Doğuma kalan gün' },
+  { key: 'yas',        label: 'Yaş (doğum tarihi)' },
+  { key: 'kupe',       label: 'Küpe No' },
+  { key: 'isim',       label: 'İsim' },
+  { key: 'laktasyon',  label: 'Laktasyon' },
+];
+const SIRALAMA_VARSAYILAN = {
+  sagmal:   { kriter: 'sgs',        yon: 'asc' },
+  gebe:     { kriter: 'dogumKalan', yon: 'asc' },
+  kuru:     { kriter: 'dogumKalan', yon: 'asc' },
+  kucuk:    { kriter: 'yas',        yon: 'desc' },
+  duve:     { kriter: 'yas',        yon: 'asc' },
+  hepsi:    { kriter: 'kupe',       yon: 'asc' },
+};
+let siralamaAyarlari = JSON.parse(JSON.stringify(SIRALAMA_VARSAYILAN));
+
+function renderSiralamaRows() {
+  document.getElementById('siralamaRows').innerHTML = SIRALAMA_GRUPLAR.map(g => {
+    const ayar = siralamaAyarlari[g.key] || SIRALAMA_VARSAYILAN[g.key];
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:4px;">${g.label}</div>
+      <div style="display:flex;gap:6px;">
+        <select id="sir_${g.key}_kriter" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:0.82rem;outline:none;">
+          ${SIRALAMA_KRITERLER.map(k => `<option value="${k.key}" ${ayar.kriter===k.key?'selected':''}>${k.label}</option>`).join('')}
+        </select>
+        <select id="sir_${g.key}_yon" style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:0.82rem;outline:none;">
+          <option value="asc" ${ayar.yon==='asc'?'selected':''}>↑ Artan</option>
+          <option value="desc" ${ayar.yon==='desc'?'selected':''}>↓ Azalan</option>
+        </select>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function siralamaAyarlariKaydet() {
+  SIRALAMA_GRUPLAR.forEach(g => {
+    siralamaAyarlari[g.key] = {
+      kriter: document.getElementById(`sir_${g.key}_kriter`).value,
+      yon:    document.getElementById(`sir_${g.key}_yon`).value,
+    };
+  });
+  const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
+  const database = window.db;
+  if (isletmeId && database) {
+    import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js").then(({updateDoc, doc: fDoc}) => {
+      updateDoc(fDoc(database, 'isletmeler', isletmeId), { siralamaAyarlari })
+        .then(() => showToast('✓ Sıralama ayarları kaydedildi!'))
+        .catch(e => showToast('Hata: ' + e.message));
+    });
+  }
+  if (window.currentPage === 'animals') renderAnimals();
+}
+
+function getSiralamaAyari(filterKey) {
+  // filterKey → grup eşleştirme
+  if (['fresh','tohumlu','acik','l1','l2','l3'].includes(filterKey)) return siralamaAyarlari['sagmal'] || SIRALAMA_VARSAYILAN['sagmal'];
+  if (['gebe','gebeduve'].includes(filterKey)) return siralamaAyarlari['gebe'] || SIRALAMA_VARSAYILAN['gebe'];
+  if (['kuru','closeup'].includes(filterKey)) return siralamaAyarlari['kuru'] || SIRALAMA_VARSAYILAN['kuru'];
+  if (filterKey === 'kucuk') return siralamaAyarlari['kucuk'] || SIRALAMA_VARSAYILAN['kucuk'];
+  if (['duve','gebeduve'].includes(filterKey)) return siralamaAyarlari['duve'] || SIRALAMA_VARSAYILAN['duve'];
+  return siralamaAyarlari[filterKey] || siralamaAyarlari['hepsi'] || SIRALAMA_VARSAYILAN['hepsi'];
+}
+
+function getSiralamaValue(a, kriter) {
+  if (kriter === 'sgs') return calcSGS(a.sonDogum) ?? 9999;
+  if (kriter === 'dogumKalan') {
+    const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
+    if (!toh) return 9999;
+    const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+    return Math.round((new Date(beklenen) - new Date()) / 86400000);
+  }
+  if (kriter === 'yas') return a.dogum || '9999';
+  if (kriter === 'kupe') return a.kupe || '';
+  if (kriter === 'isim') return a.isim || a.kupe || '';
+  if (kriter === 'laktasyon') return a.laktasyon || 0;
+  return 0;
+}
+
+function siralamaAyarlariYukle(data) {
+  if (data && data.siralamaAyarlari) {
+    siralamaAyarlari = { ...SIRALAMA_VARSAYILAN, ...data.siralamaAyarlari };
+  }
+}
+
 function renderSuruPage() {
   document.getElementById('suru_tarih').value = today();
   renderSuruList();
@@ -3060,6 +3150,7 @@ function startListening() {
     if (snap.exists() && snap.data().animals) {
       window.animals = snap.data().animals;
       window._lastUpdatedAt = snap.data().updatedAt || null;
+      siralamaAyarlariYukle(snap.data());
       localStorage.setItem('sagmal_animals', JSON.stringify(window.animals));
       // Tek seferlik otomatik düzeltme
       if (!window._reproMigrasyonYapildi) {
