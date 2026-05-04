@@ -1224,6 +1224,30 @@ function renderAnimals() {
   else if (currentFilter !== 'hepsi') list = list.filter(a => a.repro === currentFilter);
   if (q) list = list.filter(a => (a.kupe||'').toLowerCase().includes(q) || (a.isim||'').toLowerCase().includes(q));
 
+  // Akıllı sıralama
+  if (currentFilter === 'sagmal' || ['fresh','tohumlu','acik','l1','l2','l3'].includes(currentFilter)) {
+    // SGS'ye göre artan (en düşük önce)
+    list.sort((a, b) => {
+      const sgsA = calcSGS(a.sonDogum) ?? 9999;
+      const sgsB = calcSGS(b.sonDogum) ?? 9999;
+      return sgsA - sgsB;
+    });
+  } else if (currentFilter === 'kucuk') {
+    // Yaşa göre artan (en genç önce = en son doğan önce)
+    list.sort((a, b) => (b.dogum || '').localeCompare(a.dogum || ''));
+  } else if (['gebe','gebeduve','kuru','closeup'].includes(currentFilter)) {
+    // Doğuma kalan güne göre artan (en az kalan önce)
+    list.sort((a, b) => {
+      const kalanGun = (an) => {
+        const toh = (an.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
+        if (!toh) return 9999;
+        const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+        return Math.round((new Date(beklenen) - new Date()) / 86400000);
+      };
+      return kalanGun(a) - kalanGun(b);
+    });
+  }
+
   const el = document.getElementById('animalList');
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🐄</div><div class="empty-text">Hayvan bulunamadı</div></div>'; return; }
 
