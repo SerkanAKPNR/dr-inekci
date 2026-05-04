@@ -2981,7 +2981,7 @@ showPage('dashboard');
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -3066,10 +3066,13 @@ function showIsletmeSecimEkrani(isletmeler) {
     <p style="color:var(--text2);font-size:0.8rem;margin-bottom:24px;font-family:'JetBrains Mono',monospace;">İşletme Seç</p>
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
       ${isletmeler.map(i => `
-        <button onclick="isletmeyeGir('${i.id}','${i.ad}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-          <div style="font-size:1rem;font-weight:700;color:var(--text);">🏡 ${i.ad}</div>
-          <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;">${i.hayvanSayisi || '—'} hayvan</div>
-        </button>`).join('')}
+        <div style="display:flex;gap:8px;align-items:stretch;">
+          <button onclick="isletmeyeGir('${i.id}','${i.ad}')" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:1rem;font-weight:700;color:var(--text);">🏡 ${i.ad}</div>
+            <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;">${i.hayvanSayisi || '—'} hayvan</div>
+          </button>
+          <button onclick="isletmeSil('${i.id}','${i.ad}',${i.hayvanSayisi||0})" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;color:var(--danger);font-size:1rem;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='var(--border)'" title="İşletmeyi Sil">🗑️</button>
+        </div>`).join('')}
       <button onclick="yeniIsletmeEkle()" style="background:none;border:1px dashed var(--border);border-radius:12px;padding:14px;color:var(--text2);cursor:pointer;font-size:0.9rem;">+ Yeni İşletme Ekle</button>
       <button onclick="cikisYap()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.8rem;padding:8px;">🚪 Çıkış Yap</button>
     </div>`;
@@ -3110,7 +3113,23 @@ window.adminIsletmeDegistir = async function() {
   showIsletmeSecimEkrani(isletmeler);
 };
 
-window.yeniIsletmeEkle = function() {
+window.isletmeSil = async function(id, ad, hayvanSayisi) {
+  if (hayvanSayisi > 0) {
+    alert(`⚠️ "${ad}" işletmesinde ${hayvanSayisi} hayvan var!\n\nÖnce tüm hayvanları silmeniz, sonra tekrar denemeniz gerekmektedir. 🐄`);
+    return;
+  }
+  if (!confirm(`"${ad}" işletmesini silmek istediğinize emin misiniz?`)) return;
+  try {
+    await deleteDoc(doc(db, 'isletmeler', id));
+    showToast('✓ İşletme silindi!');
+    const isletmeler = await getIsletmeler();
+    showIsletmeSecimEkrani(isletmeler);
+  } catch(e) {
+    alert('Silme hatası: ' + e.message);
+  }
+};
+
+
   const ad = prompt('Yeni işletme adı:');
   if (!ad) return;
   const email = prompt('İşletme sorumlusunun e-postası (opsiyonel):');
