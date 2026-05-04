@@ -593,6 +593,12 @@ canvas { max-width: 100%; }
         </div>
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Laktasyon <span style="font-size:0.65rem;color:var(--accent);">(manuel düzelt)</span></label>
+        <input class="form-input" id="e_laktasyon" type="number" min="0" placeholder="0">
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label">Not</label>
       <textarea class="form-input" id="e_not" style="min-height:50px;resize:vertical;"></textarea>
@@ -2143,6 +2149,7 @@ function openEditModal(id) {
   document.getElementById('e_durum_tarih').value = a.durumTarih||'';
   document.getElementById('e_durum_not').value = a.durumNot||'';
   document.getElementById('e_not').value = a.not||'';
+  document.getElementById('e_laktasyon').value = a.laktasyon ?? '';
   const navList = getFilteredAnimalList();
   const navIdx = navList.findIndex(x => x.id === id);
   if (navIdx !== -1) document.getElementById('editNavPos').textContent = `${navIdx+1}/${navList.length}`;
@@ -2237,6 +2244,8 @@ function saveEdit(silent=false) {
   if (yeniDurum !== 'hayatta') { a.durumTarih = document.getElementById('e_durum_tarih').value||today(); a.durumNot = document.getElementById('e_durum_not').value.trim(); }
   else { delete a.durumTarih; delete a.durumNot; }
   a.not = document.getElementById('e_not').value.trim();
+  const laktVal = document.getElementById('e_laktasyon').value;
+  if (laktVal !== '') a.laktasyon = parseInt(laktVal) || 0;
   save();
   if (!silent) { closeModal('editModal'); showToast('Kaydedildi ✓'); renderDetail(); renderDashboard(); }
 }
