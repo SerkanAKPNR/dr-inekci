@@ -1067,7 +1067,7 @@ function kuruUyariKontrol(aktif) {
   function getBeklenenDogum(a) {
     const toh = (a.tohumlamalar||[]).find(t => (t.sonuc==='gebe'||t.sonuc==='bekliyor') && (t.beklenenDogum || t.tarih));
     if (!toh) return null;
-    return toh.beklenenDogum || addGun(toh.tarih, 280);
+    return gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
   }
 
   // Close-up: kuru hayvanlardan doğuma 21 gün kalan
@@ -1261,7 +1261,7 @@ function renderDashboard() {
     if (['gebe','gebeduve','kuru','closeup'].includes(a.repro)) {
       const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
       if (!toh) return;
-      const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+      const beklenen = gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
       if (!beklenen) return;
       const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
       if (kalan <= 21) dogumYaklasan.push({a, mesaj: `${kalan <= 0 ? 'Bugün/gecikti' : kalan + ' gün kaldı'}`});
@@ -1363,7 +1363,7 @@ function animalCard(a) {
   if (['gebe','kuru','closeup','gebeduve'].includes(repro)) {
     const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
     if (toh) {
-      const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+      const beklenen = gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
       if (!beklenen) { borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;'; }
       else {
         const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
@@ -1481,7 +1481,7 @@ function renderDetail() {
       if (!gebeStatuleri.includes(a.repro)) return '';
       const sonTohGebe = (a.tohumlamalar||[]).filter(t => t.sonuc==='gebe'||t.sonuc==='bekliyor').pop();
       if (!sonTohGebe) return '';
-      const beklenen = sonTohGebe.beklenenDogum || addGun(sonTohGebe.tarih, 280);
+      const beklenen = gecerliTarih(sonTohGebe.beklenenDogum) || addGun(sonTohGebe.tarih, 280);
       if (!beklenen) return '';
       const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
       const renk = kalan <= 20 ? 'var(--danger)' : kalan <= 60 ? 'var(--warn)' : 'var(--fresh)';
@@ -1800,6 +1800,12 @@ const PROTOKOLLER = {
   }
 };
 
+function gecerliTarih(str) {
+  if (!str || typeof str !== 'string' || str.length < 8) return null;
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : str;
+}
+
 function addGun(tarihStr, gun) {
   if (!tarihStr) return null;
   const d = new Date(tarihStr);
@@ -2088,7 +2094,7 @@ function getSiralamaValue(a, kriter) {
   if (kriter === 'dogumKalan') {
     const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
     if (!toh) return 9999;
-    const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+    const beklenen = gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
     return Math.round((new Date(beklenen) - new Date()) / 86400000);
   }
   if (kriter === 'yas') return a.dogum || '9999';
