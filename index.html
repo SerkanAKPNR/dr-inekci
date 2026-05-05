@@ -1391,13 +1391,13 @@ function animalCard(a) {
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${kalanGun !== null ? `<span style="font-size:0.7rem;font-family:'JetBrains Mono',monospace;color:${kalanGun<=21?'#cc2200':kalanGun<=60?'#d4920a':'#1f9e60'};">${kalanGun<=0?'Bugün!':kalanGun+' gün'}</span>` : ''}
+        <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
         <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
       </div>
     </div>
     <div class="info">
       <span>🏷 ${a.kupe||'—'}</span>
-      ${kalanGun !== null ? `<span style="color:${kalanGun<=21?'#cc2200':kalanGun<=60?'#d4920a':'#1f9e60'};">🗓 ${kalanGun<=0?'Bugün!':kalanGun+' gün'}</span>` : ''}
+      ${kalanGun !== null ? `<span style="color:${kalanGun<=21?'#cc2200':kalanGun<=60?'#d4920a':'#1f9e60'};">DGS:${kalanGun<=0?'Bugün!':kalanGun}</span>` : ''}
       ${isBuzagi
         ? `<span>🐣 ${hayvanYas(a.dogum)}</span><span>⚥ ${a.cinsiyet === 'erkek' ? 'Erkek' : 'Dişi'}</span>`
         : `<span>📅 ${sgsStr}</span><span>🥛 ${sonSut}</span>`
