@@ -350,6 +350,15 @@ canvas { max-width: 100%; }
       </div>
     </div>
     <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Bu süreden önce tohumlama uyarısı verilmez</div>
+    <div class="detail-row" style="margin-top:8px;">
+      <span class="detail-key">Gebelik Muayenesi Günü</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="number" id="ay_gebelik_gun" style="width:70px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.9rem;outline:none;text-align:center;" min="1" max="90">
+        <span style="font-size:0.8rem;color:var(--text2);">gün</span>
+        <button onclick="gebelikMuayeneGununuKaydet()" class="btn btn-sm">Kaydet</button>
+      </div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;padding:6px 0;">Tohumlamadan bu kadar gün sonra muayene uyarısı verilir</div>
   </div>
 
   <div class="sec-title">Sıralama Ayarları</div>
@@ -1218,7 +1227,8 @@ function renderDashboard() {
         const tohlar = (a.tohumlamalar||[]).filter(t => t.sonuc === 'bekliyor');
         tohlar.forEach(t => {
           const gunler = daysUntil(t.tarih) * -1;
-          if (gunler >= 21) repro_uyari.push({a, mesaj: `Gebelik muayenesi (${gunler}. gün)`, renk: 'var(--tohumlu)'});
+          if (gunler >= 21 && gunler < getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `🔴 Kızgınlık kontrolü (${gunler}. gün)`, renk: 'var(--danger)'});
+          if (gunler >= getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `🔬 Gebelik muayenesi (${gunler}. gün)`, renk: 'var(--tohumlu)'});
         });
       }
     }
@@ -1880,6 +1890,17 @@ function beklemeSuresiniKaydet() {
   showToast(`✓ Gönüllü bekleme süresi: ${val} gün`);
 }
 
+function getGebelikMuayeneGunu() {
+  return parseInt(localStorage.getItem('ayar_gebelik_gun') || '33');
+}
+
+function gebelikMuayeneGununuKaydet() {
+  const val = document.getElementById('ay_gebelik_gun').value;
+  if (!val || val < 1) { showToast('Geçerli bir gün girin!'); return; }
+  localStorage.setItem('ayar_gebelik_gun', val);
+  showToast(`✓ Gebelik muayenesi günü: ${val}. gün`);
+}
+
 function isletmeAyarlariKaydet() {
   const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
   const database = window.db;
@@ -1904,6 +1925,7 @@ function renderAyarlar() {
   const aktif = animals.filter(a => !a.durum||a.durum==='hayatta').length;
   document.getElementById('ayarlarToplam').textContent = aktif + ' hayvan';
   document.getElementById('ay_bekleme').value = getBeklemeSuresi();
+  document.getElementById('ay_gebelik_gun').value = getGebelikMuayeneGunu();
   const isletmeId = window.activeIsletmeId || localStorage.getItem('aktif_isletme_id');
   const database = window.db;
   if (isletmeId && database) {
@@ -2470,14 +2492,19 @@ function saveToh() {
   if (!a) return;
   if (!a.tohumlamalar) a.tohumlamalar = [];
   const beklenen = document.getElementById('toh_dogum').value || addGun(tarih, 280);
+  const sonuc = document.getElementById('toh_sonuc').value;
   a.tohumlamalar.push({
     tarih, bogaAd: document.getElementById('toh_boga_ad').value.trim(),
     bogaNo: document.getElementById('toh_boga_no').value.trim(),
     beklenenDogum: beklenen,
-    sonuc: document.getElementById('toh_sonuc').value,
+    sonuc,
     not: document.getElementById('toh_not').value.trim()
   });
-  a.repro = 'tohumlu';
+  if (sonuc === 'gebe') {
+    a.repro = (a.laktasyon && a.laktasyon > 0) ? 'gebe' : 'gebeduve';
+  } else {
+    a.repro = 'tohumlu';
+  }
   save(); closeModal('tohModal'); showToast('Tohumlama kaydedildi ✓'); renderDetail();
 }
 
