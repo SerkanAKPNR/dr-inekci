@@ -2562,7 +2562,7 @@ function saveToh() {
   const a = animals.find(x => x.id === currentAnimalId);
   if (!a) return;
   if (!a.tohumlamalar) a.tohumlamalar = [];
-  const beklenen = document.getElementById('toh_dogum').value || addGun(tarih, 280);
+  const beklenen = gecerliTarih(document.getElementById('toh_dogum').value) || addGun(tarih, 280);
   const sonuc = document.getElementById('toh_sonuc').value;
   a.tohumlamalar.push({
     tarih, bogaAd: document.getElementById('toh_boga_ad').value.trim(),
@@ -2893,7 +2893,8 @@ async function importFromExcel(event) {
           const base = 1 + t * 5;
           const tarih = row[base] instanceof Date ? row[base].toISOString().slice(0,10) : String(row[base]||'').slice(0,10);
           if (!tarih || tarih.length < 8) continue;
-          const beklenen = row[base+4] instanceof Date ? row[base+4].toISOString().slice(0,10) : String(row[base+4]||'').slice(0,10);
+          const beklenenRaw = row[base+4] instanceof Date ? row[base+4].toISOString().slice(0,10) : String(row[base+4]||'').slice(0,10);
+          const beklenen = gecerliTarih(beklenenRaw) || addGun(tarih, 280);
           const sonuc = String(row[base+3]||'bekliyor').toLowerCase().trim() || 'bekliyor';
           // Aynı tarihli kayıt varsa ekleme
           if (hayvan.tohumlamalar.find(x => x.tarih===tarih)) continue;
