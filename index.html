@@ -1063,34 +1063,43 @@ history.pushState({ page: 'dashboard' }, '', window.location.href);
 const kuruUyariGosterildi = new Set(JSON.parse(localStorage.getItem('kuruUyariGosterildi') || '[]'));
 
 function kuruUyariKontrol(aktif) {
-  // Close-up: doğuma 21 gün veya daha az kalan kuru hayvanlar
+  // Yardımcı: hayvanın beklenen doğum tarihini bul
+  function getBeklenenDogum(a) {
+    const toh = (a.tohumlamalar||[]).find(t => (t.sonuc==='gebe'||t.sonuc==='bekliyor') && (t.beklenenDogum || t.tarih));
+    if (!toh) return null;
+    return toh.beklenenDogum || addGun(toh.tarih, 280);
+  }
+
+  // Close-up: kuru hayvanlardan doğuma 21 gün kalan
   aktif.filter(a => a.repro === 'kuru').forEach(a => {
-    const toh = (a.tohumlamalar || []).find(t => t.sonuc === 'gebe' && t.beklenenDogum);
-    if (!toh) return;
-    const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
+    const beklenen = getBeklenenDogum(a);
+    if (!beklenen) return;
+    const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
     if (kalan <= 21 && kalan >= 0) { a.repro = 'closeup'; }
   });
 
-  // Kuru: doğuma 60 gün veya daha az kalan gebe hayvanlar
+  // Kuru adayları: gebe inekler 60 gün, gebe düveler 40 gün
   const adaylar = aktif.filter(a => {
-    if (a.repro !== 'gebe') return false;
-    const toh = (a.tohumlamalar || []).find(t => t.sonuc === 'gebe' && t.beklenenDogum);
-    if (!toh) return false;
-    const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
-    return kalan <= 60 && kalan >= 0 && !kuruUyariGosterildi.has(a.id);
+    if (!['gebe','gebeduve'].includes(a.repro)) return false;
+    const beklenen = getBeklenenDogum(a);
+    if (!beklenen) return false;
+    const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
+    const esik = a.repro === 'gebeduve' ? 40 : 60;
+    return kalan <= esik && kalan >= 0 && !kuruUyariGosterildi.has(a.id);
   });
   if (!adaylar.length) return;
 
   const liste = adaylar.map(a => {
-    const toh = a.tohumlamalar.find(t => t.sonuc === 'gebe' && t.beklenenDogum);
-    const kalan = Math.round((new Date(toh.beklenenDogum) - new Date()) / 86400000);
-    return `• ${a.kupe}${a.isim ? ' ('+a.isim+')' : ''} — ${kalan} gün kaldı`;
+    const beklenen = getBeklenenDogum(a);
+    const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
+    const esik = a.repro === 'gebeduve' ? 40 : 60;
+    return `• ${a.kupe}${a.isim ? ' ('+a.isim+')' : ''} — ${kalan} gün kaldı (eşik: ${esik}g)`;
   }).join('\n');
 
   adaylar.forEach(a => kuruUyariGosterildi.add(a.id));
   localStorage.setItem('kuruUyariGosterildi', JSON.stringify([...kuruUyariGosterildi]));
 
-  const onay = confirm(`⚠️ KURU DÖNEMİ UYARISI!\n\nAşağıdaki hayvanlar doğuma 60 gün veya daha az kaldı ama henüz kuruya alınmadı:\n\n${liste}\n\nHepsini şimdi KURU olarak işaretlensin mi?`);
+  const onay = confirm(`⚠️ KURU DÖNEMİ UYARISI!\n\nAşağıdaki hayvanlar kuruya alınma zamanına geldi:\n\n${liste}\n\nHepsini şimdi KURU olarak işaretlensin mi?`);
   if (onay) {
     adaylar.forEach(a => { a.repro = 'kuru'; });
     save();
