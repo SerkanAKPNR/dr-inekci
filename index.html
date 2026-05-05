@@ -991,20 +991,31 @@ function showPage(page) {
 })();
 
 // ===== GERİ TUŞU =====
+const pageHistory = [];
+
+const _origShowPage = showPage;
+function showPage(page) {
+  if (currentPage && currentPage !== page) pageHistory.push(currentPage);
+  _origShowPage(page);
+  history.pushState({ page }, '', window.location.href);
+}
+
 window.addEventListener('popstate', function(e) {
-  if (currentPage === 'dashboard') {
+  const prev = pageHistory.pop();
+  if (!prev || prev === 'dashboard' || currentPage === 'dashboard') {
+    pageHistory.length = 0;
     if (confirm('Uygulamadan çıkmak istiyor musunuz?')) {
       history.go(-1);
     } else {
-      history.pushState(null, '', window.location.href);
+      history.pushState({ page: currentPage }, '', window.location.href);
     }
   } else {
-    showPage('dashboard');
-    history.pushState(null, '', window.location.href);
+    _origShowPage(prev);
+    history.pushState({ page: prev }, '', window.location.href);
   }
 });
 // Sayfa açılınca history'e bir kayıt ekle (geri tuşu yakalansın)
-history.pushState(null, '', window.location.href);
+history.pushState({ page: 'dashboard' }, '', window.location.href);
 const kuruUyariGosterildi = new Set(JSON.parse(localStorage.getItem('kuruUyariGosterildi') || '[]'));
 
 function kuruUyariKontrol(aktif) {
@@ -1252,12 +1263,21 @@ function renderAnimals() {
   el.innerHTML = list.map(animalCard).join('');
 }
 
+function hayvanYas(dogum) {
+  if (!dogum) return '—';
+  const gun = Math.floor((new Date() - new Date(dogum)) / 86400000);
+  if (gun < 0) return '—';
+  if (gun < 180) return gun + ' gün';
+  return Math.floor(gun / 30.44) + ' ay';
+}
+
 function animalCard(a) {
   const sgs = calcSGS(a.sonDogum);
   const sgsStr = sgs !== null ? `SGS:${sgs}` : '—';
   const sonSut = a.milkRecords && a.milkRecords.length ? a.milkRecords[a.milkRecords.length-1].miktar + 'L' : '—';
   const repro = a.repro || 'diger';
   const laktStr = a.laktasyon > 0 && a.cinsiyet !== 'erkek' ? `${a.laktasyon}. Lakt.` : (a.irk || '—');
+  const isBuzagi = ['buzagi','dana','tosun'].includes(repro);
 
   // Doğuma kalan güne göre border rengi
   let borderStyle = '';
@@ -1285,8 +1305,10 @@ function animalCard(a) {
     </div>
     <div class="info">
       <span>🏷 ${a.kupe||'—'}</span>
-      <span>📅 ${sgsStr}</span>
-      <span>🥛 ${sonSut}</span>
+      ${isBuzagi
+        ? `<span>🐣 ${hayvanYas(a.dogum)}</span><span>⚥ ${a.cinsiyet === 'erkek' ? 'Erkek' : 'Dişi'}</span>`
+        : `<span>📅 ${sgsStr}</span><span>🥛 ${sonSut}</span>`
+      }
       <span>🔢 ${laktStr}</span>
     </div>
   </div>`;
@@ -3183,6 +3205,7 @@ function startListening() {
 
 // ===== İŞLETME SEÇ EKRANI =====
 function showIsletmeSecimEkrani(isletmeler) {
+  history.pushState({ page: 'isletmeSecim' }, '', window.location.href);
   const loginScreen = document.getElementById('loginScreen');
   loginScreen.innerHTML = `
     <div style="font-size:2.5rem;margin-bottom:12px;">🐄</div>
