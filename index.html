@@ -3178,18 +3178,22 @@ function disaAktar() {
 function _disaAktarYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
-  const hayvanlarData = [['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Not','Durum']];
-  animals.forEach(a => hayvanlarData.push([a.kupe||'',a.isletme||'',a.isim||'',a.dogum||'',a.sonDogum||'',a.irk||'',a.repro||'',a.not||'',a.durum||'hayatta']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hayvanlarData), 'Hayvanlar');
-  const asiData = [['Küpe No','Aşı/İlaç','Tarih','Periyot','Not']];
-  animals.forEach(a => (a.vaccines||[]).forEach(v => asiData.push([a.kupe,v.isim,v.tarih,v.periyot||'',v.not||''])));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(asiData), 'Aşı ve İlaç');
-  const sutData = [['Küpe No','Tarih','Litre','Not']];
-  animals.forEach(a => (a.milkRecords||[]).forEach(m => sutData.push([a.kupe,m.tarih,m.miktar,m.not||''])));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sutData), 'Süt Verimi');
-  const tohData = [['Küpe No','Tarih','Boğa Adı','Boğa No','Beklenen Doğum','Sonuç','Not']];
-  animals.forEach(a => (a.tohumlamalar||[]).forEach(t => tohData.push([a.kupe,t.tarih,t.bogaAd||'',t.bogaNo||'',t.beklenenDogum||'',t.sonuc||'',t.not||''])));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tohData), 'Tohumlamalar');
+  const baslik = ['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Laktasyon','Toh. Tarihi','Toh. Sonucu','Beklenen Doğum','Not','Durum'];
+  const satirlar = [baslik];
+  animals.forEach(a => {
+    const sonToh = (a.tohumlamalar||[]).length ? a.tohumlamalar[a.tohumlamalar.length-1] : null;
+    satirlar.push([
+      a.kupe||'', a.isletme||'', a.isim||'', a.dogum||'', a.sonDogum||'',
+      a.irk||'', a.repro||'', a.laktasyon||0,
+      sonToh ? sonToh.tarih||'' : '',
+      sonToh ? sonToh.sonuc||'' : '',
+      sonToh ? sonToh.beklenenDogum||'' : '',
+      a.not||'', a.durum||'hayatta'
+    ]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(satirlar);
+  ws['!cols'] = [20,14,14,14,14,12,12,10,14,14,14,20,10].map(w => ({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Hayvanlar');
   XLSX.writeFile(wb, `sagmal_inek_yedek_${today().replace(/-/g,'')}.xlsx`);
   showToast('✓ Excel indirildi!');
 }
