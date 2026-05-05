@@ -1071,12 +1071,14 @@ function kuruUyariKontrol(aktif) {
   }
 
   // Close-up: kuru hayvanlardan doğuma 21 gün kalan
+  let closeupDegisti = false;
   aktif.filter(a => a.repro === 'kuru').forEach(a => {
     const beklenen = getBeklenenDogum(a);
     if (!beklenen) return;
     const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
-    if (kalan <= 21 && kalan >= 0) { a.repro = 'closeup'; }
+    if (kalan <= 21 && kalan >= 0) { a.repro = 'closeup'; closeupDegisti = true; }
   });
+  if (closeupDegisti) save();
 
   // Kuru adayları: gebe inekler 60 gün, gebe düveler 40 gün
   const adaylar = aktif.filter(a => {
