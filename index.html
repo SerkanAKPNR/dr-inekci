@@ -628,6 +628,31 @@ canvas { max-width: 100%; }
   </div>
 </div>
 
+<!-- İNDİRME ONAY MODAL -->
+<div class="modal-overlay" id="indirmeOnayModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="indirmeOnayBaslik">İndir</div>
+    <div id="indirmeOnayAciklama" style="font-size:0.85rem;color:var(--text2);margin-bottom:20px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn" style="flex:1;" id="indirmeOnayBtn">📥 İndir</button>
+      <button class="btn btn-outline" onclick="closeModal('indirmeOnayModal')">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- UYARI HAYVAN LİSTESİ MODAL -->
+<div class="modal-overlay" id="uyariListeModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="modal-title" id="uyariListeBaslik" style="margin-bottom:0;"></div>
+      <button onclick="closeModal('uyariListeModal')" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2);">✕</button>
+    </div>
+    <div id="uyariListeIcerik" style="max-height:60vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+</div>
+
 <!-- BUZAĞI EKLE MODAL -->
 <div class="modal-overlay" id="buzagiModal">
   <div class="modal">
@@ -1106,6 +1131,10 @@ function openSGSModal() {
 }
 
 function sgsExcel() {
+  const sayi = animals.filter(a => !a.durum || a.durum === 'hayatta').filter(a => calcSGS(a.sonDogum) !== null).length;
+  indirmeOnayla('📋 SGS Listesi', `${sayi} sağmal hayvanın SGS listesi indirilecek.`, _sgsExcelYap);
+}
+function _sgsExcelYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const aktif = animals.filter(a => !a.durum || a.durum === 'hayatta');
   const liste = aktif
@@ -1197,54 +1226,72 @@ function renderDashboard() {
   });
   upcoming.sort((a,b) => a.days - b.days);
 
-  let html = '';
-  if (upcoming.length > 0) {
-    html += '<div class="sec-title">Yaklaşan Aşılar</div>';
-    html += upcoming.slice(0,3).map(u => {
-      const cls = u.days < 0 ? 'overdue' : u.days <= 10 ? 'soon' : '';
-      const label = u.days < 0 ? `${Math.abs(u.days)} gün gecikti` : u.days === 0 ? 'Bugün!' : `${u.days} gün kaldı`;
-      const periyot = parseInt(u.vaccine.periyot) || 0;
-      const progressHtml = periyot > 0 ? (() => {
-        const kalan = Math.max(0, u.days);
-        const yuzde = Math.min(100, Math.round((kalan/periyot)*100));
-        const renk = u.days < 0 ? 'var(--danger)' : u.days <= 10 ? 'var(--warn)' : 'var(--accent)';
-        return `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;"><div style="width:${yuzde}%;height:100%;background:${renk};border-radius:2px;"></div></div>`;
-      })() : '';
-      return `<div class="reminder-card ${cls}" onclick="openDetail('${u.animal.id}')">
-        <div class="reminder-top"><span class="reminder-animal">${u.animal.isim||u.animal.kupe}</span><span class="reminder-days">${label}</span></div>
-        <div style="font-size:0.8rem;color:var(--text2);">${u.vaccine.isim}</div>${progressHtml}</div>`;
-    }).join('');
-  }
-
   // Repro uyarıları
-  html += '<div class="sec-title">Reprodüktif Takip</div>';
   const repro_uyari = [];
   aktif.forEach(a => {
     const sgs = calcSGS(a.sonDogum);
     if (sgs !== null) {
-      if (a.repro === 'fresh' && sgs > getBeklemeSuresi()) repro_uyari.push({a, mesaj: `SGS ${sgs} — Tohumlama zamanı! (Bekleme: ${getBeklemeSuresi()}g)`, renk: 'var(--warn)'});
+      if (a.repro === 'fresh' && sgs > getBeklemeSuresi()) repro_uyari.push({a, mesaj: `SGS ${sgs} — tohumlama zamanı`, renk: 'var(--warn)'});
       if (a.repro === 'tohumlu') {
         const tohlar = (a.tohumlamalar||[]).filter(t => t.sonuc === 'bekliyor');
         tohlar.forEach(t => {
           const gunler = daysUntil(t.tarih) * -1;
-          if (gunler >= 21 && gunler < getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `🔴 Kızgınlık kontrolü (${gunler}. gün)`, renk: 'var(--danger)'});
-          if (gunler >= getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `🔬 Gebelik muayenesi (${gunler}. gün)`, renk: 'var(--tohumlu)'});
+          if (gunler >= 21 && gunler < getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--danger)', tip: 'kizginlik'});
+          if (gunler >= getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--tohumlu)', tip: 'gebelik'});
         });
       }
     }
   });
 
-  if (repro_uyari.length === 0) {
-    html += '<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Acil reprodüktif uyarı yok 👍</div>';
+  // Doğum yaklaşanlar (21 gün içinde)
+  const dogumYaklasan = [];
+  aktif.forEach(a => {
+    if (['gebe','gebeduve','kuru','closeup'].includes(a.repro)) {
+      const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
+      if (toh) {
+        const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+        const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
+        if (kalan <= 21) dogumYaklasan.push({a, mesaj: `${kalan <= 0 ? 'Bugün/gecikti' : kalan + ' gün kaldı'}`});
+      }
+    }
+  });
+
+  // Grupları window'a kaydet
+  window._uyariGruplari = {};
+  const tohumlamaListesi = repro_uyari.filter(u => !u.tip);
+  const kizginlikListesi = repro_uyari.filter(u => u.tip === 'kizginlik');
+  const gebelikListesi   = repro_uyari.filter(u => u.tip === 'gebelik');
+  const asiListesi = upcoming.map(u => ({a: u.animal, mesaj: `${u.vaccine.isim} — ${u.days < 0 ? Math.abs(u.days)+' gün gecikti' : u.days === 0 ? 'Bugün!' : u.days+' gün kaldı'}`}));
+
+  if (tohumlamaListesi.length) window._uyariGruplari['tohumlama'] = { baslik: `🐂 Tohumlama Zamanı (${tohumlamaListesi.length})`, liste: tohumlamaListesi };
+  if (kizginlikListesi.length) window._uyariGruplari['kizginlik'] = { baslik: `🔴 Kızgınlık Kontrolü (${kizginlikListesi.length})`, liste: kizginlikListesi };
+  if (gebelikListesi.length)   window._uyariGruplari['gebelik']   = { baslik: `🔬 Gebelik Muayenesi (${gebelikListesi.length})`, liste: gebelikListesi };
+  if (dogumYaklasan.length)    window._uyariGruplari['dogum']     = { baslik: `🤱 Doğum Yaklaşıyor (${dogumYaklasan.length})`, liste: dogumYaklasan };
+  if (asiListesi.length)       window._uyariGruplari['asi']       = { baslik: `💉 Aşı/Enjeksiyon (${asiListesi.length})`, liste: asiListesi };
+
+  const grupTanim = [
+    { key: 'tohumlama', renk: 'var(--warn)' },
+    { key: 'kizginlik', renk: 'var(--danger)' },
+    { key: 'gebelik',   renk: 'var(--tohumlu)' },
+    { key: 'dogum',     renk: '#cc2200' },
+    { key: 'asi',       renk: 'var(--accent)' },
+  ];
+
+  let html = '<div class="sec-title">Günlük Takip</div>';
+  const aktifGruplar = grupTanim.filter(g => window._uyariGruplari[g.key]);
+
+  if (aktifGruplar.length === 0) {
+    html += '<div style="color:var(--text2);font-size:0.85rem;padding:8px 0;">Bugün için acil uyarı yok 👍</div>';
   } else {
-    html += repro_uyari.slice(0,5).map(u => `
-      <div class="reminder-card soon" onclick="openDetail('${u.a.id}')">
-        <div class="reminder-top">
-          <span class="reminder-animal">${u.a.isim||u.a.kupe}</span>
-          <span class="reminder-days" style="color:${u.renk};">⚠️</span>
+    html += aktifGruplar.map(g => {
+      const grup = window._uyariGruplari[g.key];
+      return `<div onclick="uyariListeGoster('${g.key}')" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <div style="font-weight:700;font-size:0.95rem;">${grup.baslik}</div>
         </div>
-        <div style="font-size:0.8rem;color:var(--text2);">${u.mesaj}</div>
-      </div>`).join('');
+        <span style="color:${g.renk};font-size:1.3rem;font-weight:700;">›</span>
+      </div>`;
+    }).join('');
   }
 
   document.getElementById('dashReminders').innerHTML = html;
@@ -1305,10 +1352,13 @@ function animalCard(a) {
     const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
     if (toh) {
       const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
-      const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
-      if (kalan <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
-      else if (kalan <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
-      else borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;';
+      if (!beklenen) { borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;'; }
+      else {
+        const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
+        if (kalan <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
+        else if (kalan <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
+        else borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;';
+      }
     }
   } else if (repro === 'fresh') {
     borderStyle = 'border-color:#e87820;box-shadow:0 0 0 1px #e8782033;';
@@ -1420,6 +1470,7 @@ function renderDetail() {
       const sonTohGebe = (a.tohumlamalar||[]).filter(t => t.sonuc==='gebe'||t.sonuc==='bekliyor').pop();
       if (!sonTohGebe) return '';
       const beklenen = sonTohGebe.beklenenDogum || addGun(sonTohGebe.tarih, 280);
+      if (!beklenen) return '';
       const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
       const renk = kalan <= 20 ? 'var(--danger)' : kalan <= 60 ? 'var(--warn)' : 'var(--fresh)';
       const label = kalan < 0 ? `${Math.abs(kalan)} gün geçti!` : kalan === 0 ? 'Bugün!' : `${kalan} gün kaldı`;
@@ -1738,7 +1789,9 @@ const PROTOKOLLER = {
 };
 
 function addGun(tarihStr, gun) {
+  if (!tarihStr) return null;
   const d = new Date(tarihStr);
+  if (isNaN(d.getTime())) return null;
   d.setDate(d.getDate() + gun);
   return d.toISOString().slice(0,10);
 }
@@ -2698,6 +2751,29 @@ function addToCalendar(animalId, vaccineIdx) {
 function addAllRemindersToCalendar() { showToast('Takvim özelliği yakında!'); }
 
 // ===== EXCEL =====
+function uyariListeGoster(key) {
+  const grup = window._uyariGruplari && window._uyariGruplari[key];
+  if (!grup) return;
+  document.getElementById('uyariListeBaslik').textContent = grup.baslik;
+  document.getElementById('uyariListeIcerik').innerHTML = grup.liste.map(({a, mesaj}) => `
+    <div onclick="closeModal('uyariListeModal');openDetail('${a.id}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-weight:700;font-size:0.9rem;">${a.isim||a.kupe}</div>
+        <div style="font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${a.kupe} • ${mesaj}</div>
+      </div>
+      <span style="color:var(--text2);font-size:1rem;">›</span>
+    </div>`).join('');
+  document.getElementById('uyariListeModal').classList.add('open');
+}
+
+function indirmeOnayla(baslik, aciklama, callback) {
+  document.getElementById('indirmeOnayBaslik').textContent = baslik;
+  document.getElementById('indirmeOnayAciklama').textContent = aciklama;
+  const btn = document.getElementById('indirmeOnayBtn');
+  btn.onclick = () => { closeModal('indirmeOnayModal'); callback(); };
+  document.getElementById('indirmeOnayModal').classList.add('open');
+}
+
 function tohSablonIndir() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
@@ -2837,6 +2913,11 @@ async function importFromExcel(event) {
 }
 
 function gunlukListeExcel() {
+  const tarih = document.getElementById('gunlukTarih').value || today();
+  const sayi = animals.filter(a => !a.durum||a.durum==='hayatta').length;
+  indirmeOnayla('📋 Günlük Liste', `${tarih} tarihi için ${sayi} hayvanın günlük listesi indirilecek.`, _gunlukListeExcelYap);
+}
+function _gunlukListeExcelYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const tarih = document.getElementById('gunlukTarih').value || today();
   const wb = XLSX.utils.book_new();
@@ -2995,6 +3076,10 @@ function gunlukListeExcel() {
 }
 
 function rapelExcel() {
+  const sayi = animals.filter(a => (!a.durum||a.durum==='hayatta') && (a.vaccines||[]).some(v => nextVaccineDate(v))).length;
+  indirmeOnayla('💉 Aşı Rapel Listesi', `${sayi} hayvan için yaklaşan aşı/rapel listesi indirilecek.`, _rapelExcelYap);
+}
+function _rapelExcelYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
   const bugun = today();
@@ -3025,6 +3110,9 @@ function rapelExcel() {
 }
 
 function senkronRaporExcel() {
+  indirmeOnayla('🔄 Senkron Adımları', 'Aktif senkronizasyon protokol adımları indirilecek.', _senkronRaporExcelYap);
+}
+function _senkronRaporExcelYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
   const bugun = today();
@@ -3055,6 +3143,10 @@ function senkronRaporExcel() {
 }
 
 function disaAktar() {
+  const sayi = animals.length;
+  indirmeOnayla('📤 Verileri Dışa Aktar', `${sayi} hayvanın tüm verisi Excel'e aktarılacak.`, _disaAktarYap);
+}
+function _disaAktarYap() {
   if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
   const wb = XLSX.utils.book_new();
   const hayvanlarData = [['Küpe No','İşletme No','İsim','Doğum Tarihi','Son Doğum','Irk','Repro Durum','Not','Durum']];
