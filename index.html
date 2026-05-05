@@ -1241,16 +1241,17 @@ function renderDashboard() {
   const repro_uyari = [];
   aktif.forEach(a => {
     const sgs = calcSGS(a.sonDogum);
-    if (sgs !== null) {
-      if (a.repro === 'fresh' && sgs > getBeklemeSuresi()) repro_uyari.push({a, mesaj: `SGS ${sgs} — tohumlama zamanı`, renk: 'var(--warn)'});
-      if (a.repro === 'tohumlu') {
-        const tohlar = (a.tohumlamalar||[]).filter(t => t.sonuc === 'bekliyor');
-        tohlar.forEach(t => {
-          const gunler = daysUntil(t.tarih) * -1;
-          if (gunler >= 21 && gunler < getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--danger)', tip: 'kizginlik'});
-          if (gunler >= getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--tohumlu)', tip: 'gebelik'});
-        });
-      }
+    if (a.repro === 'fresh' && sgs !== null && sgs > getBeklemeSuresi()) {
+      repro_uyari.push({a, mesaj: `SGS ${sgs} — tohumlama zamanı`, renk: 'var(--warn)'});
+    }
+    if (a.repro === 'tohumlu') {
+      const tohlar = (a.tohumlamalar||[]).filter(t => t.sonuc === 'bekliyor');
+      tohlar.forEach(t => {
+        if (!t.tarih) return;
+        const gunler = daysUntil(t.tarih) * -1;
+        if (gunler >= 21 && gunler < getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--danger)', tip: 'kizginlik'});
+        if (gunler >= getGebelikMuayeneGunu()) repro_uyari.push({a, mesaj: `Tohumlamadan ${gunler}. gün`, renk: 'var(--tohumlu)', tip: 'gebelik'});
+      });
     }
   });
 
@@ -1259,11 +1260,11 @@ function renderDashboard() {
   aktif.forEach(a => {
     if (['gebe','gebeduve','kuru','closeup'].includes(a.repro)) {
       const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
-      if (toh) {
-        const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
-        const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
-        if (kalan <= 21) dogumYaklasan.push({a, mesaj: `${kalan <= 0 ? 'Bugün/gecikti' : kalan + ' gün kaldı'}`});
-      }
+      if (!toh) return;
+      const beklenen = toh.beklenenDogum || addGun(toh.tarih, 280);
+      if (!beklenen) return;
+      const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
+      if (kalan <= 21) dogumYaklasan.push({a, mesaj: `${kalan <= 0 ? 'Bugün/gecikti' : kalan + ' gün kaldı'}`});
     }
   });
 
