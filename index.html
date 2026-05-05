@@ -1087,7 +1087,7 @@ function kuruUyariKontrol(aktif) {
     if (!beklenen) return false;
     const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
     const esik = a.repro === 'gebeduve' ? 40 : 60;
-    return kalan <= esik && kalan >= 0 && !kuruUyariGosterildi.has(a.id);
+    return kalan <= esik && kalan >= 0;
   });
   if (!adaylar.length) return;
 
@@ -1097,9 +1097,6 @@ function kuruUyariKontrol(aktif) {
     const esik = a.repro === 'gebeduve' ? 40 : 60;
     return `• ${a.kupe}${a.isim ? ' ('+a.isim+')' : ''} — ${kalan} gün kaldı (eşik: ${esik}g)`;
   }).join('\n');
-
-  adaylar.forEach(a => kuruUyariGosterildi.add(a.id));
-  localStorage.setItem('kuruUyariGosterildi', JSON.stringify([...kuruUyariGosterildi]));
 
   const onay = confirm(`⚠️ KURU DÖNEMİ UYARISI!\n\nAşağıdaki hayvanlar kuruya alınma zamanına geldi:\n\n${liste}\n\nHepsini şimdi KURU olarak işaretlensin mi?`);
   if (onay) {
@@ -1366,9 +1363,9 @@ function animalCard(a) {
       const beklenen = gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
       if (!beklenen) { borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;'; }
       else {
-        const kalan = Math.round((new Date(beklenen) - new Date()) / 86400000);
-        if (kalan <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
-        else if (kalan <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
+        const k = Math.round((new Date(beklenen) - new Date()) / 86400000);
+        if (k <= 21) borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
+        else if (k <= 60) borderStyle = 'border-color:#d4920a;box-shadow:0 0 0 1px #d4920a33;';
         else borderStyle = 'border-color:#1f9e60;box-shadow:0 0 0 1px #1f9e6033;';
       }
     }
@@ -1380,13 +1377,27 @@ function animalCard(a) {
     borderStyle = 'border-color:#cc2200;box-shadow:0 0 0 1px #cc220033;';
   }
 
+  // Doğuma kalan gün hesapla
+  let kalanGun = null;
+  if (['gebe','kuru','closeup','gebeduve'].includes(repro)) {
+    const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
+    if (toh) {
+      const beklenen = gecerliTarih(toh.beklenenDogum) || addGun(toh.tarih, 280);
+      if (beklenen) kalanGun = Math.round((new Date(beklenen) - new Date()) / 86400000);
+    }
+  }
+
   return `<div class="animal-card" onclick="openDetail('${a.id}')" style="${borderStyle}">
     <div class="top">
       <span class="name">${a.isim || a.kupe || '—'}</span>
-      <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${kalanGun !== null ? `<span style="font-size:0.7rem;font-family:'JetBrains Mono',monospace;color:${kalanGun<=21?'#cc2200':kalanGun<=60?'#d4920a':'#1f9e60'};">${kalanGun<=0?'Bugün!':kalanGun+' gün'}</span>` : ''}
+        <span class="tag ${REPRO_TAG[repro]||'tag-diger'}">${REPRO_LABEL[repro]||repro}</span>
+      </div>
     </div>
     <div class="info">
       <span>🏷 ${a.kupe||'—'}</span>
+      ${kalanGun !== null ? `<span style="color:${kalanGun<=21?'#cc2200':kalanGun<=60?'#d4920a':'#1f9e60'};">🗓 ${kalanGun<=0?'Bugün!':kalanGun+' gün'}</span>` : ''}
       ${isBuzagi
         ? `<span>🐣 ${hayvanYas(a.dogum)}</span><span>⚥ ${a.cinsiyet === 'erkek' ? 'Erkek' : 'Dişi'}</span>`
         : `<span>📅 ${sgsStr}</span><span>🥛 ${sonSut}</span>`
