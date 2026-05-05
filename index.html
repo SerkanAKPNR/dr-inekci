@@ -940,6 +940,7 @@ const REPRO_TAG = { fresh:'tag-fresh', tohumlu:'tag-tohumlu', gebe:'tag-gebe', a
 const SWIPE_PAGES = ['dashboard','animals','reminders','senkron','suru','gecmis'];
 
 function showPage(page) {
+  if (currentPage && currentPage !== page) pageHistory.push(currentPage);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -955,6 +956,7 @@ function showPage(page) {
   if (page === 'gecmis') renderGecmis();
   if (page === 'ayarlar') renderAyarlar();
   if (page === 'detail') renderDetail();
+  history.pushState({ page }, '', window.location.href);
 }
 
 // ===== SWIPE =====
@@ -993,16 +995,9 @@ function showPage(page) {
 // ===== GERİ TUŞU =====
 const pageHistory = [];
 
-const _origShowPage = showPage;
-function showPage(page) {
-  if (currentPage && currentPage !== page) pageHistory.push(currentPage);
-  _origShowPage(page);
-  history.pushState({ page }, '', window.location.href);
-}
-
 window.addEventListener('popstate', function(e) {
   const prev = pageHistory.pop();
-  if (!prev || prev === 'dashboard' || currentPage === 'dashboard') {
+  if (!prev || currentPage === 'dashboard') {
     pageHistory.length = 0;
     if (confirm('Uygulamadan çıkmak istiyor musunuz?')) {
       history.go(-1);
@@ -1010,7 +1005,22 @@ window.addEventListener('popstate', function(e) {
       history.pushState({ page: currentPage }, '', window.location.href);
     }
   } else {
-    _origShowPage(prev);
+    // showPage'i pageHistory'e kayıt eklemeden çağır
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + prev).classList.add('active');
+    const idx = SWIPE_PAGES.indexOf(prev);
+    if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+    document.getElementById('fabBtn').style.display = ['detail','gecmis','ayarlar','suru','senkron'].includes(prev) ? 'none' : 'flex';
+    currentPage = prev;
+    if (prev === 'dashboard') renderDashboard();
+    if (prev === 'animals') renderAnimals();
+    if (prev === 'reminders') renderReminders();
+    if (prev === 'senkron') renderSenkronPage();
+    if (prev === 'suru') renderSuruPage();
+    if (prev === 'gecmis') renderGecmis();
+    if (prev === 'ayarlar') renderAyarlar();
+    if (prev === 'detail') renderDetail();
     history.pushState({ page: prev }, '', window.location.href);
   }
 });
