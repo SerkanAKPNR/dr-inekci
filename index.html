@@ -3302,11 +3302,12 @@ let activeIsletmeId = null; // Şu an hangi işletmenin verisi gösteriliyor
 window.activeIsletmeId = null;
 
 // ===== KAYDET =====
-async function saveToFirebase() {
+async function saveToFirebase(data) {
   if (!currentUser || !db || !activeIsletmeId) return;
+  const snapshot = data ? JSON.parse(JSON.stringify(data)) : JSON.parse(JSON.stringify(window.animals));
   try {
     await setDoc(doc(db, 'isletmeler', activeIsletmeId), {
-      animals: JSON.parse(JSON.stringify(window.animals)),
+      animals: snapshot,
       updatedAt: new Date().toISOString()
     }, { merge: true });
   } catch(e) { console.error('Kayıt hatası:', e); }
@@ -3490,7 +3491,7 @@ async function getIsletmeler() {
   return isletmeler;
 }
 
-window._firebaseSave = function(data) { window.animals = data; saveToFirebase(); };
+window._firebaseSave = function(data) { window.animals = data; saveToFirebase(data); };
 
 // ===== REPRO TOPLU DÜZELT =====
 window.reproTopluDuzelt = async function() {
