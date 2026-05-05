@@ -3254,17 +3254,52 @@ window.isletmeSil = async function(id, ad, hayvanSayisi) {
 };
 
 
-window.yeniIsletmeEkle = function() {
+window.yeniIsletmeEkle = async function() {
   const ad = prompt('Yeni işletme adı:');
   if (!ad) return;
-  const email = prompt('İşletme sorumlusunun e-postası (opsiyonel):');
-  const id = currentUser.uid + '_' + Date.now();
-  setDoc(doc(db, 'isletmeler', id), {
-    ad, sahipUid: currentUser.uid, sorumluEmail: email||'', animals: [], updatedAt: new Date().toISOString()
-  }).then(() => {
-    showToast('✓ İşletme oluşturuldu!');
+  const email = prompt('İşletme sahibinin e-postası:');
+  if (!email) return;
+  const sifre = prompt('İşletme sahibinin şifresi (en az 6 karakter):\n\nNot: Bu şifreyi işletme sahibine iletin.');
+  if (!sifre) return;
+  if (sifre.length < 6) { showToast('⚠️ Şifre en az 6 karakter olmalı!'); return; }
+
+  try {
+    // İkinci Firebase instance ile kullanıcı oluştur (admin oturumunu bozmaz)
+    const { initializeApp, getApps, deleteApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+    const { getAuth: getAuth2, createUserWithEmailAndPassword: createUser2 } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js");
+    const ikincilApp = (await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js")).initializeApp({
+      apiKey: "AIzaSyA2aR635y-wXjW26mTanXMZmVPOsxqP1aE",
+      authDomain: "dr-inekci-1c394.firebaseapp.com",
+      projectId: "dr-inekci-1c394",
+      storageBucket: "dr-inekci-1c394.firebasestorage.app",
+      messagingSenderId: "831699218431",
+      appId: "1:831699218431:web:da587576d444696c8601ca"
+    }, 'ikincil_' + Date.now());
+    const ikincilAuth = getAuth2(ikincilApp);
+    await createUser2(ikincilAuth, email, sifre);
+    await ikincilAuth.signOut();
+    await deleteApp(ikincilApp);
+
+    // Firestore'a işletme ekle
+    const id = currentUser.uid + '_' + Date.now();
+    await setDoc(doc(db, 'isletmeler', id), {
+      ad, sahipUid: currentUser.uid, sorumluEmail: email, animals: [], updatedAt: new Date().toISOString()
+    });
+    showToast('✓ İşletme ve hesap oluşturuldu!');
     adminIsletmeDegistir();
-  });
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') {
+      // Hesap zaten var, sadece işletme ekle
+      const id = currentUser.uid + '_' + Date.now();
+      await setDoc(doc(db, 'isletmeler', id), {
+        ad, sahipUid: currentUser.uid, sorumluEmail: email, animals: [], updatedAt: new Date().toISOString()
+      });
+      showToast('✓ İşletme oluşturuldu! (Hesap zaten mevcuttu)');
+      adminIsletmeDegistir();
+    } else {
+      showToast('⚠️ Hata: ' + e.message);
+    }
+  }
 };
 
 async function getIsletmeler() {
