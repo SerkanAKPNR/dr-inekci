@@ -3371,25 +3371,62 @@ function startListening() {
 // ===== İŞLETME SEÇ EKRANI =====
 function showIsletmeSecimEkrani(isletmeler) {
   history.pushState({ page: 'isletmeSecim' }, '', window.location.href);
+  // sira'ya göre sırala
+  isletmeler.sort((a, b) => (a.sira ?? 999) - (b.sira ?? 999));
   const loginScreen = document.getElementById('loginScreen');
+
+  function renderListe() {
+    const container = document.getElementById('isletmeListesi');
+    if (!container) return;
+    container.innerHTML = isletmeler.map((i, idx) => `
+      <div style="display:flex;gap:6px;align-items:stretch;">
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <button onclick="isletmeSiraUp(${idx})" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:28px;flex:1;cursor:pointer;color:var(--text2);font-size:0.75rem;${idx===0?'opacity:0.3;pointer-events:none;':''}">▲</button>
+          <button onclick="isletmeSiraDown(${idx})" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:28px;flex:1;cursor:pointer;color:var(--text2);font-size:0.75rem;${idx===isletmeler.length-1?'opacity:0.3;pointer-events:none;':''}">▼</button>
+        </div>
+        <button onclick="isletmeyeGir('${i.id}','${i.ad}')" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:1rem;font-weight:700;color:var(--text);">🏡 ${i.ad}</div>
+          <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;">${i.hayvanSayisi || '—'} hayvan</div>
+        </button>
+        <button onclick="isletmeSil('${i.id}','${i.ad}',${i.hayvanSayisi||0})" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;color:var(--danger);font-size:1rem;" title="İşletmeyi Sil">🗑️</button>
+      </div>`).join('');
+  }
+
+  window.isletmeSiraUp = function(idx) {
+    if (idx === 0) return;
+    [isletmeler[idx-1], isletmeler[idx]] = [isletmeler[idx], isletmeler[idx-1]];
+    isletmeler.forEach((i, n) => { i.sira = n; });
+    renderListe();
+    isletmeSiraKaydet();
+  };
+
+  window.isletmeSiraDown = function(idx) {
+    if (idx === isletmeler.length-1) return;
+    [isletmeler[idx], isletmeler[idx+1]] = [isletmeler[idx+1], isletmeler[idx]];
+    isletmeler.forEach((i, n) => { i.sira = n; });
+    renderListe();
+    isletmeSiraKaydet();
+  };
+
+  window.isletmeSiraKaydet = async function() {
+    const { doc: fDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+    for (const i of isletmeler) {
+      await updateDoc(fDoc(db, 'isletmeler', i.id), { sira: i.sira }).catch(()=>{});
+    }
+  };
+
   loginScreen.innerHTML = `
     <div style="font-size:2.5rem;margin-bottom:12px;">🐄</div>
     <h1 style="font-size:1.4rem;font-weight:700;color:var(--accent2);margin-bottom:4px;">Sağmal İnek</h1>
     <p style="color:var(--text2);font-size:0.8rem;margin-bottom:24px;font-family:'JetBrains Mono',monospace;">İşletme Seç</p>
     <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
-      ${isletmeler.map(i => `
-        <div style="display:flex;gap:8px;align-items:stretch;">
-          <button onclick="isletmeyeGir('${i.id}','${i.ad}')" style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-            <div style="font-size:1rem;font-weight:700;color:var(--text);">🏡 ${i.ad}</div>
-            <div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:var(--text2);margin-top:4px;">${i.hayvanSayisi || '—'} hayvan</div>
-          </button>
-          <button onclick="isletmeSil('${i.id}','${i.ad}',${i.hayvanSayisi||0})" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;color:var(--danger);font-size:1rem;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='var(--border)'" title="İşletmeyi Sil">🗑️</button>
-        </div>`).join('')}
+      <div id="isletmeListesi" style="display:flex;flex-direction:column;gap:8px;"></div>
       <button onclick="yeniIsletmeEkle()" style="background:none;border:1px dashed var(--border);border-radius:12px;padding:14px;color:var(--text2);cursor:pointer;font-size:0.9rem;">+ Yeni İşletme Ekle</button>
       <button onclick="cikisYap()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.8rem;padding:8px;">🚪 Çıkış Yap</button>
     </div>`;
   loginScreen.style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
+  renderListe();
 }
 
 window.isletmeyeGir = async function(isletmeId, isletmeAd) {
@@ -3502,6 +3539,7 @@ async function getIsletmeler() {
       isletmeler.push({
         id: d.id,
         ad: data.ad || d.id,
+        sira: data.sira ?? 999,
         hayvanSayisi: (data.animals||[]).filter(a => !a.durum||a.durum==='hayatta').length
       });
     });
