@@ -2845,23 +2845,48 @@ async function importFromExcel(event) {
         if (!kupeRaw || kupeRaw.toLowerCase().includes('küpe')) continue;
         const kupe = formatKupe(kupeRaw);
         const mevcutHayvan = animals.find(a => a.kupe===kupe);
+        let dogum='', sonDogum='';
+        if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
+        if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
+        const laktasyonVal = row[7] !== '' && row[7] !== undefined ? parseInt(row[7]) : null;
+        const reproRaw = String(row[6]||'').toLowerCase().trim();
         if (mevcutHayvan) {
           mevcutHayvan.isletme = String(row[1]||'').trim() || mevcutHayvan.isletme;
           mevcutHayvan.isim = String(row[2]||'').trim() || mevcutHayvan.isim;
           mevcutHayvan.irk = String(row[5]||'').trim() || mevcutHayvan.irk;
           if (dogum) mevcutHayvan.dogum = dogum;
           if (sonDogum) mevcutHayvan.sonDogum = sonDogum;
-          if (repro) mevcutHayvan.repro = repro;
+          if (reproRaw) mevcutHayvan.repro = reproRaw;
           if (laktasyonVal !== null) mevcutHayvan.laktasyon = laktasyonVal;
+          // Toh. Tarihi / Toh. Sonucu / Beklenen Doğum (dışa aktarılan son tohumlama düzenlenmiş olabilir)
+          const tohTarihRaw = row[8] instanceof Date ? row[8].toISOString().slice(0,10) : String(row[8]||'').slice(0,10);
+          if (tohTarihRaw && tohTarihRaw.length >= 8) {
+            const tohSonucRaw = String(row[9]||'').toLowerCase().trim();
+            const tohBeklenenRaw = row[10] instanceof Date ? row[10].toISOString().slice(0,10) : String(row[10]||'').slice(0,10);
+            if (!mevcutHayvan.tohumlamalar) mevcutHayvan.tohumlamalar = [];
+            const sonToh = mevcutHayvan.tohumlamalar.length ? mevcutHayvan.tohumlamalar[mevcutHayvan.tohumlamalar.length-1] : null;
+            if (sonToh) {
+              // Son tohumlama kaydını güncelle (tarih dahil)
+              sonToh.tarih = tohTarihRaw;
+              if (tohSonucRaw) sonToh.sonuc = tohSonucRaw;
+              if (tohBeklenenRaw && tohBeklenenRaw.length >= 8) sonToh.beklenenDogum = tohBeklenenRaw;
+            } else {
+              mevcutHayvan.tohumlamalar.push({
+                tarih: tohTarihRaw, bogaAd:'', bogaNo:'',
+                sonuc: tohSonucRaw || 'bekliyor',
+                beklenenDogum: (tohBeklenenRaw && tohBeklenenRaw.length>=8) ? tohBeklenenRaw : addGun(tohTarihRaw,280),
+                not:''
+              });
+            }
+            if (tohSonucRaw === 'gebe') mevcutHayvan.repro = (mevcutHayvan.laktasyon && mevcutHayvan.laktasyon > 0) ? 'gebe' : 'gebeduve';
+            else if (tohSonucRaw === 'bekliyor' && !['gebe','kuru','closeup','gebeduve'].includes(mevcutHayvan.repro)) mevcutHayvan.repro = 'tohumlu';
+          }
+          if (row[11] !== undefined && row[11] !== '') mevcutHayvan.not = String(row[11]).trim();
           updated++; continue;
         }
-        let dogum='', sonDogum='';
-        if (row[3]) dogum = row[3] instanceof Date ? row[3].toISOString().slice(0,10) : String(row[3]).slice(0,10);
-        if (row[4]) sonDogum = row[4] instanceof Date ? row[4].toISOString().slice(0,10) : String(row[4]).slice(0,10);
-        const laktasyonVal = row[7] ? parseInt(row[7]) : null;
         
-        // Repro otomatik hesapla
-        let repro = String(row[6]||'').toLowerCase().trim();
+        // Repro otomatik hesapla (sadece yeni hayvan için)
+        let repro = reproRaw;
         if (!repro || repro === 'diger' || repro === '') {
           if (sonDogum) {
             repro = 'fresh'; // Son doğum var → fresh
