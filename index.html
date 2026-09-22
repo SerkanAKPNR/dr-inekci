@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Sağmal İnek v2026.03.29-v1</title>
+<title>Sağmal İnek v2026.09.22</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -371,7 +371,7 @@ canvas { max-width: 100%; }
 
   <div class="sec-title">Uygulama</div>
   <div class="detail-card">
-    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.04.27</span></div>
+    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.09.22</span></div>
     <div class="detail-row"><span class="detail-key">Aktif Hayvan</span><span class="detail-val" id="ayarlarToplam">—</span></div>
   </div>
 </div>
@@ -903,11 +903,13 @@ canvas { max-width: 100%; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
 <script>
 // ===== VERİ =====
-let animals = (() => { try { return JSON.parse(localStorage.getItem('sagmal_animals') || '[]') || []; } catch(e) { localStorage.removeItem('sagmal_animals'); return []; } })();
-let misafirMod = false;
-let currentAnimalId = null;
-let currentFilter = 'hepsi';
-let currentPage = 'dashboard';
+// KRİTİK: "var" olmalı — window.animals ile aynı değişken olsun (Firebase modülü window.animals'a yazıyor)
+var animals = (function() { try { return JSON.parse(localStorage.getItem('sagmal_animals') || '[]') || []; } catch(e) { localStorage.removeItem('sagmal_animals'); return []; } })();
+// KRİTİK: "var" olmalı — Firebase modülü window.misafirMod ve window.currentPage okuyor/yazıyor
+var misafirMod = false;
+var currentAnimalId = null;
+var currentFilter = 'hepsi';
+var currentPage = 'dashboard';
 
 function save() {
   localStorage.setItem('sagmal_animals', JSON.stringify(animals));
@@ -1120,7 +1122,7 @@ function openSGSModal() {
   document.getElementById('sgsListesi').innerHTML = `
     <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:0.78rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">ORTALAMA SGS</span>
-      <span style="font-size:1.4rem;font-weight:700;color:var(--accent);">${ortSGS ?? '—'} gün</span>
+      <span style="font-size:1.4rem;font-weight:700;color:var(--accent);">${ortSGS != null ? ortSGS : '—'} gün</span>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr 80px 70px;gap:4px;padding:6px 4px;border-bottom:2px solid var(--border);margin-bottom:4px;">
       <span style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text2);">KÜPE</span>
@@ -1204,7 +1206,7 @@ function renderDashboard() {
     <div class="stat-card" onclick="filterAndShow('gebeduve')"><div class="stat-num" style="color:#6633cc">${gebeduve}</div><div class="stat-label">Gebe Düve</div></div>
     ${diger_kucuk > 0 ? `<div class="stat-card" onclick="filterAndShow('kucuk')"><div class="stat-num" style="color:#4a8800">${diger_kucuk}</div><div class="stat-label">Buzağı/Dana</div></div>` : ''}
     <div class="stat-card" onclick="openSGSModal()" style="border-color:var(--accent);">
-      <div class="stat-num" style="color:var(--accent);font-size:1.2rem;">${ortSGS ?? '—'}</div>
+      <div class="stat-num" style="color:var(--accent);font-size:1.2rem;">${ortSGS != null ? ortSGS : '—'}</div>
       <div class="stat-label">Ort.SGS</div>
     </div>
     <div class="stat-card" onclick="filterAndShow('hepsi')" style="border-color:var(--text2);">
@@ -1315,7 +1317,7 @@ function renderAnimals() {
     `<button class="chip ${currentFilter===f?'active':''}" onclick="currentFilter='${f}';renderAnimals()">${labels[f]}</button>`
   ).join('');
 
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const q = ((document.getElementById('searchInput') || {}).value || '').toLowerCase();
   let list = animals.filter(a => !a.durum || a.durum === 'hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
@@ -1876,7 +1878,7 @@ function senkronBaslat() {
   const baslangic = document.getElementById('senkron_baslangic').value;
   if (!baslangic) { showToast('Başlangıç tarihi gerekli!'); return; }
   const p = PROTOKOLLER[protokolKey];
-  const secilen = animals.filter(a => document.getElementById('snk_' + a.id)?.checked);
+  const secilen = animals.filter(function(a){ var el = document.getElementById('snk_' + a.id); return el && el.checked; });
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
 
   if (!window.senkronlar) window.senkronlar = [];
@@ -2101,7 +2103,7 @@ function getSiralamaAyari(filterKey) {
 }
 
 function getSiralamaValue(a, kriter) {
-  if (kriter === 'sgs') return calcSGS(a.sonDogum) ?? 9999;
+  if (kriter === 'sgs') { var _sgs = calcSGS(a.sonDogum); return _sgs != null ? _sgs : 9999; }
   if (kriter === 'dogumKalan') {
     const toh = (a.tohumlamalar||[]).find(t => t.sonuc==='gebe'||t.sonuc==='bekliyor');
     if (!toh) return 9999;
@@ -2151,7 +2153,7 @@ function suruUygula() {
   const not = document.getElementById('suru_not').value.trim();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (grup !== 'hepsi') list = list.filter(a => a.repro === grup);
-  let secilen = list.filter(a => document.getElementById('sc_' + a.id)?.checked);
+  let secilen = list.filter(function(a){ var el = document.getElementById('sc_' + a.id); return el && el.checked; });
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (isPG(isim)) {
     const gebeler = secilen.filter(a => a.repro === 'gebe');
@@ -2202,7 +2204,7 @@ function suruGrubaUygula() {
 
 // ===== NAVİGASYON =====
 function getFilteredAnimalList() {
-  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const q = ((document.getElementById('searchInput') || {}).value || '').toLowerCase();
   let list = animals.filter(a => !a.durum||a.durum==='hayatta');
   if (currentFilter === 'sagmal') list = list.filter(a => ['fresh','tohumlu','acik','gebe'].includes(a.repro));
   else if (currentFilter === 'kucuk') list = list.filter(a => ['buzagi','dana','tosun','boga'].includes(a.repro));
@@ -2375,7 +2377,7 @@ function openEditModal(id) {
   document.getElementById('e_durum_tarih').value = a.durumTarih||'';
   document.getElementById('e_durum_not').value = a.durumNot||'';
   document.getElementById('e_not').value = a.not||'';
-  document.getElementById('e_laktasyon').value = a.laktasyon ?? '';
+  document.getElementById('e_laktasyon').value = a.laktasyon != null ? a.laktasyon : '';
   const navList = getFilteredAnimalList();
   const navIdx = navList.findIndex(x => x.id === id);
   if (navIdx !== -1) document.getElementById('editNavPos').textContent = `${navIdx+1}/${navList.length}`;
@@ -2726,7 +2728,7 @@ function toggleTopluSil() {
 function topluSilHepsiniSec(sec) { document.querySelectorAll('[id^="sil_"]').forEach(cb => cb.checked = sec); }
 
 function executeTopluSil() {
-  const secilen = animals.filter(a => document.getElementById('sil_'+a.id)?.checked);
+  const secilen = animals.filter(function(a){ var el = document.getElementById('sil_'+a.id); return el && el.checked; });
   if (!secilen.length) { showToast('Hayvan seçilmedi!'); return; }
   if (!confirm(secilen.length + ' hayvanı silmek istediğinize emin misiniz?')) return;
   const ids = secilen.map(a => a.id);
@@ -3295,7 +3297,7 @@ showPage('dashboard');
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -3378,7 +3380,7 @@ function startListening() {
 function showIsletmeSecimEkrani(isletmeler) {
   history.pushState({ page: 'isletmeSecim' }, '', window.location.href);
   // sira'ya göre sırala
-  isletmeler.sort((a, b) => (a.sira ?? 999) - (b.sira ?? 999));
+  isletmeler.sort((a, b) => (a.sira != null ? a.sira : 999) - (b.sira != null ? b.sira : 999));
   const loginScreen = document.getElementById('loginScreen');
 
   function renderListe() {
@@ -3442,20 +3444,22 @@ window.isletmeyeGir = async function(isletmeId, isletmeAd) {
   window.activeIsletmeId = isletmeId;
   localStorage.setItem('aktif_isletme_id', isletmeId);
   localStorage.setItem('aktif_isletme_ad', isletmeAd);
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
-  document.getElementById('headerSub').textContent = isletmeAd;
+  // Elemanlara null-güvenli eriş — biri eksik olsa bile devam etsin
+  const _el = function(id) { return document.getElementById(id) || { style: {}, textContent: '' }; };
+  _el('loginScreen').style.display = 'none';
+  _el('appScreen').style.display = 'block';
+  _el('headerSub').textContent = isletmeAd;
   // İşletme bar'ını güncelle
   const bar = document.getElementById('isletmeBar');
   const barAd = document.getElementById('isletmeBarAd');
   if (bar && barAd) { bar.style.display='block'; barAd.textContent = '🏡 ' + isletmeAd; }
-  document.getElementById('misafirBadge').style.display = 'none';
-  document.getElementById('ayarlarBtn').style.display = 'block';
+  _el('misafirBadge').style.display = 'none';
+  _el('ayarlarBtn').style.display = 'block';
 
   // Admin ise işletme değiştirme butonu ekle
-  if (currentUser.email === ADMIN_EMAIL) {
+  if (currentUser && currentUser.email === ADMIN_EMAIL) {
     const hr = document.getElementById('headerRight');
-    hr.innerHTML = `
+    if (hr) hr.innerHTML = `
       <div style="display:flex;gap:6px;align-items:center;">
         <button onclick="adminIsletmeDegistir()" style="background:none;border:1px solid var(--accent);border-radius:8px;padding:5px 10px;color:var(--accent);font-size:0.72rem;cursor:pointer;font-family:'JetBrains Mono',monospace;">🔄 İşletme</button>
         <button onclick="showPage('ayarlar')" id="ayarlarBtn" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:0.8rem;cursor:pointer;">⚙️</button>
@@ -3545,7 +3549,7 @@ async function getIsletmeler() {
       isletmeler.push({
         id: d.id,
         ad: data.ad || d.id,
-        sira: data.sira ?? 999,
+        sira: data.sira != null ? data.sira : 999,
         hayvanSayisi: (data.animals||[]).filter(a => !a.durum||a.durum==='hayatta').length
       });
     });
@@ -3715,7 +3719,7 @@ if (auth) {
           // İlk kez giriş — mevcut veriyi ilk işletme yap
           const isletmeId = user.uid;
           const mevcutSnap = await getDoc(doc(db, 'sagmal', user.uid)).catch(()=>null);
-          const mevcutAnimals = mevcutSnap?.exists() ? mevcutSnap.data().animals || [] : window.animals || [];
+          const mevcutAnimals = (mevcutSnap && mevcutSnap.exists()) ? mevcutSnap.data().animals || [] : window.animals || [];
           await setDoc(doc(db, 'isletmeler', isletmeId), {
             ad: 'İşletmem', sahipUid: user.uid,
             animals: mevcutAnimals, updatedAt: new Date().toISOString()
@@ -3725,8 +3729,9 @@ if (auth) {
         // Admin için her zaman seçim ekranı göster
         showIsletmeSecimEkrani(isletmeler);
       } else {
-        // Normal kullanıcı: e-postasına atanmış işletmeyi bul
-        const tumSnap = await getDocs(collection(db, 'isletmeler'));
+        // Normal kullanıcı: SADECE kendi e-postasına atanmış işletmeyi sorgula (güvenlik kuralı uyumlu)
+        const q = query(collection(db, 'isletmeler'), where('sorumluEmail', '==', user.email));
+        const tumSnap = await getDocs(q).catch(function(){ return { forEach: function(){} }; });
         let atanmisIsletme = null;
         tumSnap.forEach(d => {
           const data = d.data();
@@ -3740,12 +3745,12 @@ if (auth) {
           // Atanmış işletme yok — kendi UID'sine bak
           const isletmeId = user.uid;
           const isletmeSnap = await getDoc(doc(db, 'isletmeler', isletmeId)).catch(()=>null);
-          if (!isletmeSnap?.exists()) {
+          if (!(isletmeSnap && isletmeSnap.exists())) {
             await setDoc(doc(db, 'isletmeler', isletmeId), {
               ad: user.email, sahipUid: user.uid, sorumluEmail: user.email, animals: [], updatedAt: new Date().toISOString()
             });
           }
-          window.isletmeyeGir(isletmeId, isletmeSnap?.data()?.ad || user.email);
+          window.isletmeyeGir(isletmeId, (isletmeSnap && isletmeSnap.exists() && isletmeSnap.data().ad) || user.email);
         }
       }
     } else if (!window.misafirMod) {
