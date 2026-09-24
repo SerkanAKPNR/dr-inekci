@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Sağmal İnek v2026.09.22</title>
+<title>Sağmal İnek v2026.09.24</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -371,7 +371,7 @@ canvas { max-width: 100%; }
 
   <div class="sec-title">Uygulama</div>
   <div class="detail-card">
-    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.09.22</span></div>
+    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.09.24</span></div>
     <div class="detail-row"><span class="detail-key">Aktif Hayvan</span><span class="detail-val" id="ayarlarToplam">—</span></div>
   </div>
 </div>
@@ -3424,6 +3424,7 @@ function showIsletmeSecimEkrani(isletmeler) {
   };
 
   loginScreen.innerHTML = `
+    <div style="margin:auto 0;width:100%;display:flex;flex-direction:column;align-items:center;padding:8px 0 24px;">
     <div style="font-size:2.5rem;margin-bottom:12px;">🐄</div>
     <h1 style="font-size:1.4rem;font-weight:700;color:var(--accent2);margin-bottom:4px;">Sağmal İnek</h1>
     <p style="color:var(--text2);font-size:0.8rem;margin-bottom:24px;font-family:'JetBrains Mono',monospace;">İşletme Seç</p>
@@ -3431,7 +3432,12 @@ function showIsletmeSecimEkrani(isletmeler) {
       <div id="isletmeListesi" style="display:flex;flex-direction:column;gap:8px;"></div>
       <button onclick="yeniIsletmeEkle()" style="background:none;border:1px dashed var(--border);border-radius:12px;padding:14px;color:var(--text2);cursor:pointer;font-size:0.9rem;">+ Yeni İşletme Ekle</button>
       <button onclick="cikisYap()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.8rem;padding:8px;">🚪 Çıkış Yap</button>
+    </div>
     </div>`;
+  // Liste uzunsa kaydırılabilsin (ortalama taşınca üst kısım kesiliyordu)
+  loginScreen.style.justifyContent = 'flex-start';
+  loginScreen.style.overflowY = 'auto';
+  loginScreen.style.webkitOverflowScrolling = 'touch';
   loginScreen.style.display = 'flex';
   document.getElementById('appScreen').style.display = 'none';
   renderListe();
@@ -3678,6 +3684,7 @@ window.cikisYap = function() {
   if (auth) signOut(auth);
   activeIsletmeId = null;
   window.misafirMod = false;
+  document.getElementById('loginScreen').style.justifyContent = 'center';
   document.getElementById('loginScreen').innerHTML = `
     <div style="font-size:3rem;margin-bottom:16px;">🐄</div>
     <h1 style="font-size:1.5rem;font-weight:700;color:var(--accent2);margin-bottom:8px;">Sağmal İnek</h1>
