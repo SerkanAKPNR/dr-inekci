@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Sağmal İnek v2026.09.24</title>
+<title>Sağmal İnek v2026.09.29</title>
 <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -233,6 +233,17 @@ canvas { max-width: 100%; }
       <label class="form-label">Aşı / İlaç / Vitamin Adı *</label>
       <input class="form-input" id="suru_isim" placeholder="Şap, Vitamin B12, Selenyum...">
     </div>
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <select class="form-input" id="suru_kategori">
+        <option value="">🤖 Otomatik (isimden)</option>
+        <option value="asi">💉 Aşı</option>
+        <option value="tedavi">💊 Tedavi / İlaç</option>
+        <option value="repro">🔬 Reprodüksiyon</option>
+        <option value="parazit">🪱 Parazit</option>
+        <option value="diger">🧪 Vitamin / Mineral / Diğer</option>
+      </select>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Tarih *</label>
@@ -312,6 +323,7 @@ canvas { max-width: 100%; }
   <div class="sec-title" style="margin-top:0;">Veri Yönetimi</div>
   <div style="display:flex;flex-direction:column;gap:10px;">
     <button class="btn" onclick="disaAktar()" style="width:100%;padding:14px;font-size:1rem;">📤 Verileri Dışa Aktar (Excel)</button>
+    <button class="btn btn-outline" onclick="uygulamaExcel()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--accent);color:var(--accent);">📋 Uygulama Geçmişi — Tüm Sürü (Excel)</button>
     <button class="btn btn-outline" onclick="rapelExcel()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--tohumlu);color:var(--tohumlu);">💉 Aşı Rapel Listesi (Excel)</button>
     <button class="btn btn-outline" onclick="senkronRaporExcel()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--gebe);color:var(--gebe);">🔄 Senkron Adımları (Excel)</button>
     <button class="btn btn-outline" onclick="tohSablonIndir()" style="width:100%;padding:14px;font-size:1rem;border-color:var(--gebe);color:var(--gebe);">🐂 Tohumlama Şablonu İndir</button>
@@ -371,7 +383,7 @@ canvas { max-width: 100%; }
 
   <div class="sec-title">Uygulama</div>
   <div class="detail-card">
-    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.09.24</span></div>
+    <div class="detail-row"><span class="detail-key">Versiyon</span><span class="detail-val">v2026.09.29</span></div>
     <div class="detail-row"><span class="detail-key">Aktif Hayvan</span><span class="detail-val" id="ayarlarToplam">—</span></div>
   </div>
 </div>
@@ -757,6 +769,17 @@ canvas { max-width: 100%; }
       <label class="form-label">Aşı / İlaç Adı</label>
       <input class="form-input" id="v_isim" placeholder="Şap, Vitamin B12...">
     </div>
+    <div class="form-group">
+      <label class="form-label">Kategori</label>
+      <select class="form-input" id="v_kategori">
+        <option value="">🤖 Otomatik (isimden)</option>
+        <option value="asi">💉 Aşı</option>
+        <option value="tedavi">💊 Tedavi / İlaç</option>
+        <option value="repro">🔬 Reprodüksiyon</option>
+        <option value="parazit">🪱 Parazit</option>
+        <option value="diger">🧪 Vitamin / Mineral / Diğer</option>
+      </select>
+    </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Tarih</label>
@@ -920,7 +943,7 @@ function today() { const d = new Date(); return d.getFullYear() + '-' + String(d
 function nowTime() { const d = new Date(); return today() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
 
 function daysUntil(dateStr) { const d = new Date(dateStr), now = new Date(); now.setHours(0,0,0,0); d.setHours(0,0,0,0); return Math.round((d - now) / 86400000); }
-function nextVaccineDate(v) { if (!v.periyot) return null; const d = new Date(v.tarih); d.setDate(d.getDate() + parseInt(v.periyot)); return d.toISOString().slice(0,10); }
+function nextVaccineDate(v) { if (!v.periyot || v.tamamlandi) return null; const d = new Date(v.tarih); d.setDate(d.getDate() + parseInt(v.periyot)); return d.toISOString().slice(0,10); }
 
 function calcAge(dob) {
   if (!dob) return '—';
@@ -1571,19 +1594,19 @@ function renderDetail() {
     ${milkRecords.length === 0 ? '<div style="color:var(--text2);font-size:0.85rem;">Kayıt yok</div>' : `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;">
         <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--accent);">${sonSutVal??'—'}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--accent);">${sonSutVal!=null?sonSutVal:'—'}</div>
           <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">SON</div>
         </div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--fresh);">${ort3??'—'}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--fresh);">${ort3!=null?ort3:'—'}</div>
           <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">3G ORT</div>
         </div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--tohumlu);">${ort7??'—'}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--tohumlu);">${ort7!=null?ort7:'—'}</div>
           <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">7G ORT</div>
         </div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px 4px;text-align:center;">
-          <div style="font-size:1.1rem;font-weight:700;color:var(--gebe);">${ort30??'—'}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--gebe);">${ort30!=null?ort30:'—'}</div>
           <div style="font-size:0.58rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">30G ORT</div>
         </div>
       </div>
@@ -1602,6 +1625,15 @@ function renderDetail() {
     `}
   </div>`;
 
+  // Uygulama Geçmişi
+  html += `<div class="detail-card">
+    <div class="detail-card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>📋 Uygulama Geçmişi</span>
+      <button class="btn btn-sm btn-outline" onclick="uygulamaExcel('${a.id}')">📥 Excel</button>
+    </div>
+    <div id="uygGecmisBox"></div>
+  </div>`;
+
   // Aşı
   const vaccines = a.vaccines || [];
   html += `<div class="detail-card">
@@ -1618,7 +1650,9 @@ function renderDetail() {
         <div><div style="font-weight:600;font-size:0.88rem;">${v.isim}</div><div style="font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">${v.tarih}${v.not?' • '+v.not:''}</div></div>
         <div style="text-align:right;">
           ${nd ? `<div style="font-size:0.72rem;font-family:'JetBrains Mono',monospace;color:${days<0?'var(--danger)':days<=10?'var(--warn)':'var(--accent)'};">${nextLabel}</div>` : ''}
+          ${v.tamamlandi ? `<div style="font-size:0.68rem;color:var(--text2);font-family:'JetBrains Mono',monospace;">✓ rapel ${v.tamamlandi}</div>` : ''}
           <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:2px;">
+            ${nd && days <= 10 ? `<button onclick="asiYapildi('${a.id}',${i})" style="background:var(--accent);border:none;color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:0.75rem;font-weight:600;">✓ Yapıldı</button>` : ''}
             <button onclick="addToCalendar('${a.id}',${i})" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.78rem;">📅</button>
             <button onclick="deleteVaccine('${a.id}',${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.78rem;">sil</button>
           </div>
@@ -1658,6 +1692,7 @@ function renderDetail() {
   </div>`;
 
   document.getElementById('detailSections').innerHTML = html;
+  renderUygGecmis(a);
 
   // Süt grafiği
   if (milkRecords.length > 1) {
@@ -1905,7 +1940,8 @@ function senkronBaslat() {
           isim: `[${p.ad}] ${adim.islem}`,
           tarih,
           periyot: '',
-          not: `Protokol günü: G${adim.gun}`
+          not: `Protokol günü: G${adim.gun}`,
+          kategori: 'repro'
         });
       }
     });
@@ -2164,12 +2200,13 @@ function suruUygula() {
       if (!secilen.length) { showToast('Geçerli hayvan kalmadı!'); return; }
     }
   }
-  secilen.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not}); });
+  secilen.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not, kategori: document.getElementById('suru_kategori').value || tahminKategori(isim)}); });
   save();
   showToast(`✓ ${secilen.length} hayvana ${isim} uygulandı`);
   document.getElementById('suru_isim').value = '';
   document.getElementById('suru_periyot').value = '';
   document.getElementById('suru_not').value = '';
+  document.getElementById('suru_kategori').value = '';
   const res = document.getElementById('suruResult');
   res.style.display = 'block';
   res.innerHTML = `<span style="color:var(--accent)">✓ ${secilen.length} hayvana uygulandı!</span>`;
@@ -2196,7 +2233,7 @@ function suruGrubaUygula() {
     }
   }
   if (!confirm(`${list.length} hayvana ${isim} uygulanacak. Emin misiniz?`)) return;
-  list.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not}); });
+  list.forEach(a => { if (!a.vaccines) a.vaccines = []; a.vaccines.push({isim, tarih, periyot, not, kategori: document.getElementById('suru_kategori').value || tahminKategori(isim)}); });
   save();
   showToast(`✓ ${list.length} hayvana uygulandı!`);
   document.getElementById('suru_isim').value = '';
@@ -2302,6 +2339,8 @@ function saveDogum() {
   if (!a) return;
 
   // Anneyi güncelle
+  if (!a.dogumlar) a.dogumlar = [];
+  if (a.dogumlar.indexOf(tarih) === -1) a.dogumlar.push(tarih);
   a.sonDogum = tarih;
   a.repro = 'fresh';
   a.laktasyon = (a.laktasyon || 0) + 1;
@@ -2536,9 +2575,9 @@ function saveVaccine() {
     return;
   }
   if (!a.vaccines) a.vaccines = [];
-  a.vaccines.push({isim, tarih, periyot: document.getElementById('v_periyot').value, not: document.getElementById('v_not').value.trim()});
+  a.vaccines.push({isim, tarih, periyot: document.getElementById('v_periyot').value, not: document.getElementById('v_not').value.trim(), kategori: document.getElementById('v_kategori').value || tahminKategori(isim)});
   save(); closeModal('vaccineModal'); showToast('Aşı kaydedildi ✓'); renderDetail();
-  ['v_isim','v_periyot','v_not'].forEach(id => document.getElementById(id).value='');
+  ['v_isim','v_periyot','v_not','v_kategori'].forEach(id => document.getElementById(id).value='');
 }
 
 function saveWeight() {
@@ -2632,6 +2671,7 @@ function deleteSonDogum(animalId) {
   if (!confirm('Son doğum tarihi silinsin mi?\nSGS sıfırlanacak ve repro durumu "Açık" olarak güncellenecek.')) return;
   const a = animals.find(x => x.id === animalId);
   if (!a) return;
+  if (a.dogumlar) a.dogumlar = a.dogumlar.filter(function(d){ return d !== a.sonDogum; });
   a.sonDogum = '';
   a.repro = 'acik';
   save(); renderDetail(); showToast('Son doğum tarihi silindi');
@@ -2661,6 +2701,7 @@ function saveMuayene(sonuc) {
   if (!t) return;
 
   t.sonuc = sonuc;
+  t.muayeneTarih = document.getElementById('muayene_tarih').value || today();
   const not = document.getElementById('muayene_not').value.trim();
   if (not) t.not = (t.not ? t.not + ' | ' : '') + `Muayene (${document.getElementById('muayene_tarih').value}): ${not}`;
 
@@ -2685,6 +2726,156 @@ function deleteToh(animalId, idx) {
   if (!a) return;
   a.tohumlamalar.splice(idx, 1);
   save(); renderDetail(); showToast('Tohumlama kaydı silindi');
+}
+
+
+// ===== UYGULAMA GEÇMİŞİ / KATEGORİLER =====
+var KATEGORILER = {
+  asi:     {ad: 'Aşı',               ikon: '💉', renk: 'var(--accent)'},
+  tedavi:  {ad: 'Tedavi / İlaç',     ikon: '💊', renk: 'var(--danger)'},
+  repro:   {ad: 'Reprodüksiyon',     ikon: '🔬', renk: 'var(--gebe)'},
+  parazit: {ad: 'Parazit',           ikon: '🪱', renk: 'var(--warn)'},
+  diger:   {ad: 'Vitamin / Mineral / Diğer', ikon: '🧪', renk: 'var(--tohumlu)'}
+};
+var KAT_SIRA = ['asi','tedavi','repro','parazit','diger'];
+var uygFiltre = 'hepsi';
+
+function tahminKategori(isim) {
+  var s = String(isim || '').replace(/İ/g,'i').replace(/I/g,'i').toLowerCase().replace(/ı/g,'i');
+  if (/^\[|pg|pgf|prostaglandin|lutalyse|estrumate|dinoprost|cloprostenol|kloprostenol|gnrh|ovsynch|presynch|cosynch|cidr|prid|progesteron|ecg|pmsg|hcg|receptal|fertagyl|ovarelin|dalmarelin|senkron/.test(s)) return 'repro';
+  if (/iverm|ivomec|albendazol|doramek|dectomax|eprinomek|fenbendazol|oksfendazol|oxfendazol|levamizol|closantel|klosantel|triklabendazol|nitroksinil|parazit|kene|deltametrin|flumetrin|sipermetrin|cypermetrin|amitraz|butox|pour/.test(s)) return 'parazit';
+  if (/antibiyo|oksitetra|oxytetra|penisilin|penicil|amoksi|amoxi|enroflok|enroflox|seftiofur|ceftiofur|excenel|naxcel|marboflok|tilosin|tylosin|gentami|streptomi|flunix|fluniks|meloks|meloxi|ketoprofen|deksa|dexa|mastit|intramam|kalsiyum|calcium|propilen|oksitosin|oxytocin|tedavi|serum|buparva|butalex|imidokarb|diminazen|berenil/.test(s)) return 'tedavi';
+  if (/vitamin|vit\b|ad3e|b12|selen|mineral|bolus|iyot|fosfor|biotin|çinko|cinko|glukoz|dekstroz/.test(s)) return 'diger';
+  return 'asi';
+}
+function asiKategori(v) { return (v && v.kategori && KATEGORILER[v.kategori]) ? v.kategori : tahminKategori(v ? v.isim : ''); }
+
+function uygulamaListesi(a) {
+  var list = [];
+  (a.vaccines || []).forEach(function(v, i) {
+    var d = [];
+    if (v.periyot) d.push('Periyot: ' + v.periyot + ' gün');
+    if (v.tamamlandi) d.push('Rapel yapıldı: ' + v.tamamlandi);
+    if (v.not) d.push(v.not);
+    list.push({tarih: v.tarih || '', kat: asiKategori(v), baslik: v.isim || '—', detay: d.join(' • '), vIdx: i, tahmin: !v.kategori});
+  });
+  var sonucAd = {gebe:'Gebe', bos:'Boş', dogurdu:'Doğurdu', bekliyor:'Bekliyor'};
+  (a.tohumlamalar || []).forEach(function(t) {
+    var d = [];
+    if (t.bogaAd) d.push('Boğa: ' + t.bogaAd + (t.bogaNo ? ' (' + t.bogaNo + ')' : ''));
+    d.push('Sonuç: ' + (sonucAd[t.sonuc] || t.sonuc || '—'));
+    if (t.not) d.push(t.not);
+    list.push({tarih: t.tarih || '', kat: 'repro', baslik: 'Tohumlama', detay: d.join(' • ')});
+    if (t.muayeneTarih && (t.sonuc === 'gebe' || t.sonuc === 'bos')) {
+      list.push({tarih: t.muayeneTarih, kat: 'repro', baslik: 'Gebelik Muayenesi', detay: 'Sonuç: ' + sonucAd[t.sonuc] + ' • Tohumlama: ' + t.tarih});
+    }
+  });
+  // Doğumlar: kayıtlı doğumlar + son doğum + bu anneden doğan buzağılar
+  var dogumSet = {};
+  (a.dogumlar || []).forEach(function(d){ if (d) dogumSet[d] = ''; });
+  if (a.sonDogum) dogumSet[a.sonDogum] = dogumSet[a.sonDogum] || '';
+  if (a.kupe) animals.forEach(function(x) {
+    if (x.dogum && x.not && x.not.indexOf('Anne: ' + a.kupe) === 0) {
+      var y = 'Yavru: ' + (x.kupe || '—') + (x.cinsiyet === 'erkek' ? ' ♂' : ' ♀');
+      dogumSet[x.dogum] = dogumSet[x.dogum] ? dogumSet[x.dogum] + ', ' + y : y;
+    }
+  });
+  Object.keys(dogumSet).forEach(function(d) { list.push({tarih: d, kat: 'repro', baslik: 'Doğum', detay: dogumSet[d]}); });
+  list.sort(function(x, y) { return (y.tarih || '').localeCompare(x.tarih || ''); });
+  return list;
+}
+
+function renderUygGecmis(a) {
+  var box = document.getElementById('uygGecmisBox');
+  if (!box) return;
+  var list = uygulamaListesi(a);
+  var sayac = {hepsi: list.length};
+  KAT_SIRA.forEach(function(k){ sayac[k] = 0; });
+  list.forEach(function(u){ sayac[u.kat]++; });
+  var chips = ['hepsi'].concat(KAT_SIRA).filter(function(k){ return k === 'hepsi' || sayac[k] > 0; }).map(function(k) {
+    var lbl = k === 'hepsi' ? 'Hepsi' : KATEGORILER[k].ikon + ' ' + KATEGORILER[k].ad.split(' ')[0];
+    return '<button class="chip ' + (uygFiltre === k ? 'active' : '') + '" onclick="uygFiltre=\'' + k + '\';renderUygGecmis(animals.find(function(x){return x.id===\'' + a.id + '\';}))">' + lbl + ' (' + sayac[k] + ')</button>';
+  }).join('');
+  if (uygFiltre !== 'hepsi' && !sayac[uygFiltre]) uygFiltre = 'hepsi';
+  var gorunen = uygFiltre === 'hepsi' ? list : list.filter(function(u){ return u.kat === uygFiltre; });
+  if (!list.length) { box.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;">Kayıt yok</div>'; return; }
+  var rows = gorunen.map(function(u) {
+    var k = KATEGORILER[u.kat];
+    var katSec = '';
+    if (u.vIdx !== undefined) {
+      katSec = '<select onchange="asiKategoriDegistir(\'' + a.id + '\',' + u.vIdx + ',this.value)" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:1px 4px;color:var(--text2);font-size:0.68rem;margin-top:3px;">' +
+        KAT_SIRA.map(function(kk){ return '<option value="' + kk + '"' + (kk === u.kat ? ' selected' : '') + '>' + KATEGORILER[kk].ikon + ' ' + KATEGORILER[kk].ad + (kk === u.kat && u.tahmin ? ' (tahmin)' : '') + '</option>'; }).join('') + '</select>';
+    }
+    return '<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">' +
+      '<div style="font-size:1.1rem;line-height:1.2;">' + k.ikon + '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;justify-content:space-between;gap:6px;"><span style="font-weight:600;font-size:0.86rem;color:' + k.renk + ';">' + u.baslik + '</span>' +
+        '<span style="font-size:0.72rem;color:var(--text2);font-family:\'JetBrains Mono\',monospace;white-space:nowrap;">' + (u.tarih || '—') + '</span></div>' +
+        (u.detay ? '<div style="font-size:0.72rem;color:var(--text2);word-break:break-word;">' + u.detay + '</div>' : '') +
+        katSec +
+      '</div></div>';
+  }).join('');
+  box.innerHTML = '<div class="filters" style="margin-bottom:6px;flex-wrap:wrap;">' + chips + '</div>' +
+    '<div style="max-height:380px;overflow-y:auto;">' + rows + '</div>';
+}
+
+function asiKategoriDegistir(animalId, idx, kat) {
+  if (misafirKontrol()) { renderDetail(); return; }
+  var a = animals.find(function(x){ return x.id === animalId; });
+  if (!a || !a.vaccines || !a.vaccines[idx] || !KATEGORILER[kat]) return;
+  a.vaccines[idx].kategori = kat;
+  save(); renderUygGecmis(a); showToast('Kategori: ' + KATEGORILER[kat].ad);
+}
+
+function uygulamaExcel(animalId) {
+  var tek = animalId ? animals.find(function(x){ return x.id === animalId; }) : null;
+  var mesaj = tek ? (tek.kupe || tek.isim || 'Hayvan') + ' için tüm uygulamalar kategorilere ayrılmış olarak indirilecek.'
+                  : 'Sürüdeki tüm hayvanların uygulamaları kategorilere ayrılmış olarak indirilecek.';
+  indirmeOnayla('📋 Uygulama Geçmişi', mesaj, function(){ _uygulamaExcelYap(animalId); });
+}
+function _uygulamaExcelYap(animalId) {
+  if (typeof XLSX === 'undefined') { showToast('⚠️ İnternet bağlantısı gerekli!'); return; }
+  var hedef = animalId ? animals.filter(function(x){ return x.id === animalId; }) : animals.slice();
+  var baslik = ['Küpe No', 'İsim', 'Durum', 'Tarih', 'Kategori', 'Uygulama', 'Detay / Not'];
+  var tum = [], katRows = {};
+  KAT_SIRA.forEach(function(k){ katRows[k] = []; });
+  hedef.forEach(function(a) {
+    var durum = (!a.durum || a.durum === 'hayatta') ? 'Hayatta' : a.durum;
+    uygulamaListesi(a).forEach(function(u) {
+      var r = [a.kupe || '', a.isim || '', durum, u.tarih, KATEGORILER[u.kat].ad, u.baslik, u.detay];
+      tum.push(r); katRows[u.kat].push(r);
+    });
+  });
+  if (!tum.length) { showToast('Kayıtlı uygulama yok'); return; }
+  var sirala = function(rows){ return rows.sort(function(x, y){ return (y[3] || '').localeCompare(x[3] || '') || (x[0] || '').localeCompare(y[0] || ''); }); };
+  var wb = XLSX.utils.book_new();
+  var ekle = function(ad, rows) {
+    var ws = XLSX.utils.aoa_to_sheet([baslik].concat(sirala(rows)));
+    ws['!cols'] = [{wch:14},{wch:12},{wch:9},{wch:11},{wch:16},{wch:28},{wch:50}];
+    XLSX.utils.book_append_sheet(wb, ws, ad);
+  };
+  ekle('Tümü', tum);
+  var sayfaAd = {asi:'Aşı', tedavi:'Tedavi-İlaç', repro:'Reprodüksiyon', parazit:'Parazit', diger:'Vitamin-Mineral-Diğer'};
+  KAT_SIRA.forEach(function(k){ if (katRows[k].length) ekle(sayfaAd[k], katRows[k]); });
+  var ad = animalId && hedef[0] ? 'uygulamalar_' + String(hedef[0].kupe || hedef[0].isim || 'hayvan').replace(/[^\w-]/g, '') : 'uygulamalar_suru';
+  XLSX.writeFile(wb, ad + '_' + today() + '.xlsx');
+}
+
+function asiYapildi(animalId, idx) {
+  if (misafirKontrol()) return;
+  const a = animals.find(x => x.id === animalId);
+  if (!a || !a.vaccines || !a.vaccines[idx]) return;
+  const eski = a.vaccines[idx];
+  const tarih = prompt(eski.isim + ' uygulama tarihi (YYYY-AA-GG):', today());
+  if (tarih === null) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(tarih) || isNaN(new Date(tarih).getTime())) { showToast('Tarih formatı hatalı!'); return; }
+  if (a.repro === 'gebe' && isPG(eski.isim)) {
+    alert('⚠️ UYARI: Bu hayvan GEBEDİR!\nProstaglandin gebe hayvana uygulanamaz — abort yaptırır!\n\nKayıt engellendi.');
+    return;
+  }
+  eski.tamamlandi = tarih;
+  a.vaccines.push({isim: eski.isim, tarih: tarih, periyot: eski.periyot, not: eski.not || '', kategori: asiKategori(eski)});
+  save(); renderDetail(); showToast('Aşı yapıldı ✓ Sonraki rapel planlandı');
 }
 
 function deleteVaccine(animalId, idx) {
